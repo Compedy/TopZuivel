@@ -1,0 +1,151 @@
+
+'use client'
+
+import { useState } from 'react'
+import { CartItem } from './ShopInterface'
+import { Button } from '@/components/ui/button'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog'
+import { ShoppingCart } from 'lucide-react'
+import { submitOrder } from '@/app/actions'
+
+
+// Simple toast mock if not exists, but we installed shadcn. 
+// Actually shadcn adds use-toast.ts if you add the toast component. 
+// I haven't added toast component yet via CLI. I'll just use simple alert/state for now or add it later.
+// I'll stick to a simple success state in the modal for now to avoid dependency hell in this step.
+
+interface CartModalProps {
+    cartItems: CartItem[]
+    onSubmitSuccess: () => void
+    userId: string
+}
+
+export default function CartModal({ cartItems, onSubmitSuccess, userId }: CartModalProps) {
+    const [open, setOpen] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [success, setSuccess] = useState(false)
+
+    const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0)
+
+    const estimatedTotal = cartItems.reduce((acc, item) => {
+        if (item.product.is_price_per_kilo) {
+            return acc + (item.product.price * item.product.weight_per_unit * item.quantity)
+        }
+        return acc + (item.product.price * item.quantity)
+    }, 0)
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true)
+        try {
+            const result = await submitOrder(userId, cartItems)
+            if (result.success) {
+                setSuccess(true)
+                onSubmitSuccess()
+                // Keep modal open for a moment to show success message
+            } else {
+                alert('Er ging iets mis: ' + result.error)
+            }
+        } catch (e) {
+            console.error(e)
+            alert('Er is een onverwachte fout opgetreden.')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const handleClose = () => {
+        setOpen(false)
+        if (success) {
+            setSuccess(false) // Reset for next time
+        }
+    }
+
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price)
+    }
+
+    return (
+        <>
+            {/* Floating Action Button */}
+            {totalItems > 0 && (
+                <div className="fixed bottom-6 right-6 z-50">
+                    <Button
+                        className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center relative"
+                        onClick={() => setOpen(true)}
+                    >
+                        <ShoppingCart className="h-6 w-6" />
+                        <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-secondary-foreground text-xs font-bold border border-background">
+                            {totalItems}
+                        </span>
+                    </Button>
+                </div>
+            )}
+
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Bestelling Bevestigen</DialogTitle>
+                        <DialogDescription>
+                            Controleer uw bestelling voor deze week.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {success ? (
+                        <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center">
+                            <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <h3 className="text-lg font-medium">Bestelling Geplaatst!</h3>
+                            <p className="text-muted-foreground">U ontvangt binnen enkele minuten een bevestiging per e-mail.</p>
+                            <Button onClick={handleClose} className="w-full">Sluiten</Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="border rounded-md divide-y overflow-hidden">
+                                {cartItems.map(item => (
+                                    <div key={item.productId} className="flex justify-between p-3 text-sm bg-card hover:bg-accent/50">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{item.product.name}</span>
+                                            <span className="text-muted-foreground text-xs">Aantal: {item.quantity} x {item.product.unit_label}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            {item.product.is_price_per_kilo ? (
+                                                <span className="text-muted-foreground italic">~{formatPrice(item.product.price * item.product.weight_per_unit * item.quantity)}</span>
+                                            ) : (
+                                                <span>{formatPrice(item.product.price * item.quantity)}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex justify-between items-center pt-2 border-t font-bold">
+                                <span>Geschat Totaal:</span>
+                                <span>{formatPrice(estimatedTotal)}</span>
+                            </div>
+
+                            <div className="bg-yellow-50 p-3 rounded-md text-sm text-yellow-800 border border-yellow-200">
+                                Let op: Bij gewichtsartikelen is de prijs een schatting. De factuur wordt gebaseerd op het werkelijke gewicht.
+                            </div>
+
+                            <DialogFooter className="sm:justify-end gap-2">
+                                <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Annuleren</Button>
+                                <Button onClick={handleSubmit} disabled={isSubmitting || cartItems.length === 0} className="bg-primary text-primary-foreground">
+                                    {isSubmitting ? 'Versturen...' : 'Bestelling Plaatsen'}
+                                </Button>
+                            </DialogFooter>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </>
+    )
+}

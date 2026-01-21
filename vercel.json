@@ -1,0 +1,8 @@
+{
+    "crons": [
+        {
+            "path": "/api/cron/monday-report",
+            "schedule": "0 4 * * 1"
+        }
+    ]
+}
