@@ -72,15 +72,44 @@ export default function ShopInterface({ products }: ShopInterfaceProps) {
         setOrderPlaced(false)
     }
 
+    const scrollToCategory = (category: string) => {
+        const element = document.getElementById(category)
+        if (element) {
+            const headerOffset = 180 // Approximate height of sticky headers + nav
+            const elementPosition = element.getBoundingClientRect().top
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            })
+        }
+    }
+
     return (
         <div className="space-y-8">
             <div className="flex justify-end md:hidden mb-4">
                 {/* Logout button removed */}
             </div>
 
+            {/* Category Navigation */}
+            <div className="sticky top-16 z-40 -mx-4 px-4 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border overflow-x-auto whitespace-nowrap flex gap-2 no-scrollbar">
+                {categories.map(category => (
+                    <Button
+                        key={category}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => scrollToCategory(category)}
+                        className="rounded-full text-xs font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                        {category}
+                    </Button>
+                ))}
+            </div>
+
             {categories.map(category => (
-                <section key={category} className="space-y-4">
-                    <h2 className="sticky top-14 z-20 bg-background/95 py-2 text-xl font-bold bg-muted/30 backdrop-blur-sm border-b border-border text-primary px-2 rounded-t-md">
+                <section key={category} id={category} className="space-y-4 scroll-mt-32">
+                    <h2 className="sticky top-28 z-20 bg-background/95 py-2 text-xl font-bold bg-muted/30 backdrop-blur-sm border-b border-border text-primary px-2 rounded-t-md">
                         {category}
                     </h2>
                     <div className="grid gap-4 sm:grid-cols-1">
