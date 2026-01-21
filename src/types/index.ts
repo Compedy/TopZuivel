@@ -44,6 +44,7 @@ export interface Database {
                     is_price_per_kilo: boolean
                     weight_per_unit: number
                     is_active: boolean
+                    sort_order: number | null
                 }
                 Insert: {
                     id?: string
@@ -55,6 +56,7 @@ export interface Database {
                     is_price_per_kilo?: boolean
                     weight_per_unit: number
                     is_active?: boolean
+                    sort_order?: number | null
                 }
                 Update: {
                     id?: string
@@ -66,6 +68,7 @@ export interface Database {
                     is_price_per_kilo?: boolean
                     weight_per_unit?: number
                     is_active?: boolean
+                    sort_order?: number | null
                 }
             }
             orders: {

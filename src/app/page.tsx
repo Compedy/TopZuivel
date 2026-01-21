@@ -11,8 +11,7 @@ export default async function Home() {
     .from('products')
     .select('*')
     .eq('is_active', true)
-    .order('category', { ascending: true })
-    .order('name', { ascending: true })
+    .order('sort_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching products:', error)
