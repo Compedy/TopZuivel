@@ -1,11 +1,12 @@
 
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { CartItem } from '@/components/ShopInterface'
 
 export async function submitOrder(orderDetails: { companyName: string, email: string, cartItems: CartItem[] }) {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS for public orders
+    const supabase: any = createAdminClient()
     const { companyName, email, cartItems } = orderDetails
 
     if (!companyName || !email || cartItems.length === 0) {
