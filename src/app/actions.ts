@@ -114,3 +114,33 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
 
     return { success: true, orderId: order.id }
 }
+
+export async function adminLogin(formData: FormData) {
+    const username = formData.get('username') as string
+    const password = formData.get('password') as string
+
+    if (
+        username === process.env.ADMIN_USERNAME &&
+        password === process.env.ADMIN_PASSWORD
+    ) {
+        const { cookies } = await import('next/headers')
+        const cookieStore = await cookies()
+
+        cookieStore.set('admin_session', 'true', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 60 * 60 * 24, // 1 day
+            path: '/'
+        })
+
+        return { success: true }
+    }
+
+    return { success: false, error: 'Ongeldige inloggegevens' }
+}
+
+export async function adminLogout(_formData?: FormData) {
+    const { cookies } = await import('next/headers')
+    const cookieStore = await cookies()
+    cookieStore.delete('admin_session')
+}
