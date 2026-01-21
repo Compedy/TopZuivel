@@ -71,21 +71,27 @@ export interface Database {
             orders: {
                 Row: {
                     id: string
-                    user_id: string
+                    user_id: string | null
+                    company_name: string | null
+                    email: string | null
                     created_at: string
                     week_number: number | null
                     status: string
                 }
                 Insert: {
                     id?: string
-                    user_id: string
+                    user_id?: string | null
+                    company_name?: string | null
+                    email?: string | null
                     created_at?: string
                     week_number?: number | null
                     status?: string
                 }
                 Update: {
                     id?: string
-                    user_id?: string
+                    user_id?: string | null
+                    company_name?: string | null
+                    email?: string | null
                     created_at?: string
                     week_number?: number | null
                     status?: string

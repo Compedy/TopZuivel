@@ -4,6 +4,8 @@
 import { useState } from 'react'
 import { CartItem } from './ShopInterface'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
     Dialog,
     DialogContent,
@@ -25,13 +27,15 @@ import { submitOrder } from '@/app/actions'
 interface CartModalProps {
     cartItems: CartItem[]
     onSubmitSuccess: () => void
-    userId: string
+    // userId: string // Removed as we now use manual input
 }
 
-export default function CartModal({ cartItems, onSubmitSuccess, userId }: CartModalProps) {
+export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps) {
     const [open, setOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
+    const [companyName, setCompanyName] = useState('')
+    const [email, setEmail] = useState('')
 
     const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0)
 
@@ -43,12 +47,23 @@ export default function CartModal({ cartItems, onSubmitSuccess, userId }: CartMo
     }, 0)
 
     const handleSubmit = async () => {
+        if (!companyName || !email) {
+            alert('Vul alstublieft uw bedrijfsnaam en e-mailadres in.')
+            return
+        }
+
         setIsSubmitting(true)
         try {
-            const result = await submitOrder(userId, cartItems)
+            const result = await submitOrder({
+                companyName,
+                email,
+                cartItems
+            })
             if (result.success) {
                 setSuccess(true)
                 onSubmitSuccess()
+                setCompanyName('')
+                setEmail('')
                 // Keep modal open for a moment to show success message
             } else {
                 alert('Er ging iets mis: ' + result.error)
@@ -94,7 +109,7 @@ export default function CartModal({ cartItems, onSubmitSuccess, userId }: CartMo
                     <DialogHeader>
                         <DialogTitle>Bestelling Bevestigen</DialogTitle>
                         <DialogDescription>
-                            Controleer uw bestelling voor deze week.
+                            Controleer uw bestelling en vul uw gegevens in.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -109,7 +124,7 @@ export default function CartModal({ cartItems, onSubmitSuccess, userId }: CartMo
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <div className="border rounded-md divide-y overflow-hidden">
+                            <div className="border rounded-md divide-y overflow-hidden max-h-60 overflow-y-auto">
                                 {cartItems.map(item => (
                                     <div key={item.productId} className="flex justify-between p-3 text-sm bg-card hover:bg-accent/50">
                                         <div className="flex flex-col">
@@ -132,13 +147,36 @@ export default function CartModal({ cartItems, onSubmitSuccess, userId }: CartMo
                                 <span>{formatPrice(estimatedTotal)}</span>
                             </div>
 
-                            <div className="bg-yellow-50 p-3 rounded-md text-sm text-yellow-800 border border-yellow-200">
+                            <div className="space-y-4 pt-4 border-t">
+                                <h4 className="font-medium text-sm text-foreground">Uw Gegevens</h4>
+                                <div className="space-y-2">
+                                    <Label htmlFor="companyName">Bedrijfsnaam</Label>
+                                    <Input
+                                        id="companyName"
+                                        value={companyName}
+                                        onChange={(e) => setCompanyName(e.target.value)}
+                                        placeholder="Bijv. Café De Markt"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">E-mailadres</Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="bestellingen@uwdomein.nl"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="bg-yellow-50 p-3 rounded-md text-sm text-yellow-800 border border-yellow-200 mt-4">
                                 Let op: Bij gewichtsartikelen is de prijs een schatting. De factuur wordt gebaseerd op het werkelijke gewicht.
                             </div>
 
-                            <DialogFooter className="sm:justify-end gap-2">
+                            <DialogFooter className="sm:justify-end gap-2 mt-4">
                                 <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Annuleren</Button>
-                                <Button onClick={handleSubmit} disabled={isSubmitting || cartItems.length === 0} className="bg-primary text-primary-foreground">
+                                <Button onClick={handleSubmit} disabled={isSubmitting || cartItems.length === 0 || !companyName || !email} className="bg-primary text-primary-foreground">
                                     {isSubmitting ? 'Versturen...' : 'Bestelling Plaatsen'}
                                 </Button>
                             </DialogFooter>

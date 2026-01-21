@@ -24,7 +24,7 @@ function groupProductsByCategory(products: Product[]) {
 
 interface ShopInterfaceProps {
     products: Product[]
-    user: any
+    // user: any // Removed
 }
 
 export type CartItem = {
@@ -33,7 +33,7 @@ export type CartItem = {
     product: Product
 }
 
-export default function ShopInterface({ products, user }: ShopInterfaceProps) {
+export default function ShopInterface({ products }: ShopInterfaceProps) {
     const [cart, setCart] = useState<Record<string, number>>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [orderPlaced, setOrderPlaced] = useState(false)
@@ -53,12 +53,6 @@ export default function ShopInterface({ products, user }: ShopInterfaceProps) {
             }
             return newCart
         })
-    }
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut()
-        router.push('/')
-        router.refresh()
     }
 
     // Calculate cart items for the modal
@@ -81,9 +75,7 @@ export default function ShopInterface({ products, user }: ShopInterfaceProps) {
     return (
         <div className="space-y-8">
             <div className="flex justify-end md:hidden mb-4">
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
-                    <LogOut className="mr-2 h-4 w-4" /> Uitloggen
-                </Button>
+                {/* Logout button removed */}
             </div>
 
             {categories.map(category => (
@@ -113,7 +105,6 @@ export default function ShopInterface({ products, user }: ShopInterfaceProps) {
             <CartModal
                 cartItems={cartItems}
                 onSubmitSuccess={resetCart}
-                userId={user.id}
             />
         </div>
     )

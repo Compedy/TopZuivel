@@ -4,11 +4,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { CartItem } from '@/components/ShopInterface'
 
-export async function submitOrder(userId: string, cartItems: CartItem[]) {
+export async function submitOrder(orderDetails: { companyName: string, email: string, cartItems: CartItem[] }) {
     const supabase = await createClient()
+    const { companyName, email, cartItems } = orderDetails
 
-    if (!userId || cartItems.length === 0) {
-        return { success: false, error: 'Ongeldige bestelling' }
+    if (!companyName || !email || cartItems.length === 0) {
+        return { success: false, error: 'Ongeldige bestelling: Bedrijfsnaam en E-mail zijn verplicht.' }
     }
 
     // 1. Create Order
@@ -25,7 +26,9 @@ export async function submitOrder(userId: string, cartItems: CartItem[]) {
     const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-            user_id: userId,
+            // user_id: null, // Explicitly null or omitted if DB default is null
+            company_name: companyName,
+            email: email,
             week_number: currentWeek,
             status: 'pending'
         })
