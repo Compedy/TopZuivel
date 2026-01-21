@@ -3,6 +3,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CartItem } from '@/components/ShopInterface'
+import { Resend } from 'resend'
 
 export async function submitOrder(orderDetails: { companyName: string, email: string, cartItems: CartItem[] }) {
     // Use admin client to bypass RLS for public orders
@@ -61,9 +62,55 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
         return { success: false, error: 'Kon productregels niet opslaan' }
     }
 
-    // 3. Send Email (Optional for now, but part of requirements)
-    // We can trigger this via another function or here. 
-    // For now, let's just return success.
+    // 3. Send Email
+    try {
+        const adminEmail = process.env.ADMIN_EMAIL
+        const fromEmail = process.env.FROM_EMAIL
+
+        if (adminEmail && fromEmail) {
+            const resend = new Resend(process.env.RESEND_API_KEY)
+
+            // Generate HTML Table
+            const rows = cartItems.map(item => `
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.product.name}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.quantity} ${item.product.unit_label}</td>
+                </tr>
+            `).join('')
+
+            const html = `
+                <h1>Nieuwe Bestelling Ontvangen</h1>
+                <p><strong>Bedrijf:</strong> ${companyName}</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Week:</strong> ${currentWeek}</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2; text-align: left;">
+                            <th style="padding: 8px; border-bottom: 1px solid #ddd;">Product</th>
+                            <th style="padding: 8px; border-bottom: 1px solid #ddd;">Aantal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            `
+
+            await resend.emails.send({
+                from: fromEmail,
+                to: adminEmail,
+                subject: `Nieuwe Bestelling: ${companyName}`,
+                html: html
+            })
+        } else {
+            console.warn('ADMIN_EMAIL of FROM_EMAIL ontbreekt. Geen bevestigingsmail verstuurd.')
+        }
+
+    } catch (emailError) {
+        console.error('Fout bij versturen e-mail:', emailError)
+        // Don't fail the order if email fails, just log it
+    }
 
     return { success: true, orderId: order.id }
 }
