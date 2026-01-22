@@ -135,6 +135,7 @@ export async function GET(request: NextRequest) {
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: fromEmail, // Needs to be a verified domain
       to: [adminEmail], // Admin email
+      replyTo: adminEmail,
       subject: `Weekorder Rapportage - Week ${getWeekNumber(new Date())}`,
       html: html,
     })

@@ -67,10 +67,11 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
         const adminEmail = process.env.ADMIN_EMAIL
         const fromEmail = process.env.FROM_EMAIL
 
+
         if (adminEmail && fromEmail) {
             const resend = new Resend(process.env.RESEND_API_KEY)
 
-            // Generate HTML Table
+            // Generate HTML Table for Admin
             const rows = cartItems.map(item => `
                 <tr>
                     <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.product.name}</td>
@@ -78,7 +79,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 </tr>
             `).join('')
 
-            const html = `
+            const adminHtml = `
                 <h1>Nieuwe Bestelling Ontvangen</h1>
                 <p><strong>Bedrijf:</strong> ${companyName}</p>
                 <p><strong>Email:</strong> ${email}</p>
@@ -97,14 +98,46 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 </table>
             `
 
+            // 1. Send to Admin
             await resend.emails.send({
                 from: fromEmail,
                 to: adminEmail,
+                replyTo: adminEmail, // As requested: reply-to should be admin-email
                 subject: `Nieuwe Bestelling: ${companyName}`,
-                html: html
+                html: adminHtml
             })
+
+            // 2. Send Confirmation to User
+            const userHtml = `
+                <h1>Bevestiging van uw bestelling</h1>
+                <p>Beste relatie,</p>
+                <p>Bedankt voor uw bestelling bij Top Zuivel. Hieronder vindt u een overzicht van uw bestelling voor week ${currentWeek}.</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2; text-align: left;">
+                            <th style="padding: 8px; border-bottom: 1px solid #ddd;">Product</th>
+                            <th style="padding: 8px; border-bottom: 1px solid #ddd;">Aantal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+                
+                <p>Met vriendelijke groet,<br>Top Zuivel</p>
+            `
+
+            await resend.emails.send({
+                from: fromEmail,
+                to: email, // Send to customer
+                replyTo: adminEmail,
+                subject: `Bevestiging Bestelling Week ${currentWeek} - Top Zuivel`,
+                html: userHtml
+            })
+
         } else {
-            console.warn('ADMIN_EMAIL of FROM_EMAIL ontbreekt. Geen bevestigingsmail verstuurd.')
+            console.warn('ADMIN_EMAIL of FROM_EMAIL ontbreekt. Geen e-mails verstuurd.')
         }
 
     } catch (emailError) {
