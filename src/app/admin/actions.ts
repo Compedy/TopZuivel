@@ -1,21 +1,17 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/types'
+import { cookies } from 'next/headers'
 
 type ProductUpdate = Database['public']['Tables']['products']['Update']
 
 export async function updateProduct(id: string, updates: ProductUpdate) {
-    const supabase = await createClient()
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
 
-    // Verify Admin Role
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Unauthorized' }
-
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'admin') return { success: false, error: 'Unauthorized' }
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminSupabase = createAdminClient() as any
