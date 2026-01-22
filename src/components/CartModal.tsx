@@ -154,7 +154,7 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
                                     <Input
                                         id="companyName"
                                         value={companyName}
-                                        onChange={(e) => setCompanyName(e.target.value)}
+                                        onChange={(e) => e?.target && setCompanyName(e.target.value)}
                                         placeholder="Bijv. Café De Markt"
                                     />
                                 </div>
@@ -164,7 +164,7 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
                                         id="email"
                                         type="email"
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        onChange={(e) => e?.target && setEmail(e.target.value)}
                                         placeholder="bestellingen@uwdomein.nl"
                                     />
                                 </div>
@@ -176,7 +176,7 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
 
                             <DialogFooter className="sm:justify-end gap-2 mt-4">
                                 <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Annuleren</Button>
-                                <Button onClick={handleSubmit} disabled={isSubmitting || cartItems.length === 0 || !companyName || !email} className="bg-primary text-primary-foreground">
+                                <Button onClick={() => handleSubmit()} disabled={isSubmitting || cartItems.length === 0 || !companyName || !email} className="bg-primary text-primary-foreground">
                                     {isSubmitting ? 'Versturen...' : 'Bestelling Plaatsen'}
                                 </Button>
                             </DialogFooter>
