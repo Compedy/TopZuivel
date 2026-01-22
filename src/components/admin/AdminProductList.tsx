@@ -46,8 +46,12 @@ function ProductRow({ product }: { product: Product }) {
 
     const handleSave = async () => {
         setLoading(true)
-        await updateProduct(product.id, data)
-        setIsEditing(false)
+        const result = await updateProduct(product.id, data)
+        if (result.success) {
+            setIsEditing(false)
+        } else {
+            alert('Fout bij opslaan: ' + result.error)
+        }
         setLoading(false)
     }
 

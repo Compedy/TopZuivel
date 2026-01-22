@@ -1,10 +1,11 @@
-
-'use server'
-
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { Database } from '@/types'
 
-export async function updateProduct(id: string, updates: any) {
+type ProductUpdate = Database['public']['Tables']['products']['Update']
+
+export async function updateProduct(id: string, updates: ProductUpdate) {
     const supabase = await createClient()
 
     // Verify Admin Role
@@ -14,12 +15,16 @@ export async function updateProduct(id: string, updates: any) {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     if (profile?.role !== 'admin') return { success: false, error: 'Unauthorized' }
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminSupabase = createAdminClient() as any
+
+    const { error } = await adminSupabase
         .from('products')
         .update(updates)
         .eq('id', id)
 
     if (error) {
+        console.error('Update product error:', error)
         return { success: false, error: error.message }
     }
 
