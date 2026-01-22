@@ -39,7 +39,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
 
     if (orderError || !order) {
         console.error('Order creation failed:', orderError)
-        return { success: false, error: 'Kon bestelling niet aanmaken' }
+        return { success: false, error: 'Kon bestelling niet aanmaken: ' + (orderError?.message || 'Onbekende fout') }
     }
 
     // 2. Create Order Items
