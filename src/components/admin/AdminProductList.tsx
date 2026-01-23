@@ -6,17 +6,34 @@ import { Product } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { updateProduct } from '@/app/admin/actions'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
+import AddProductForm from './AddProductForm'
 
 interface AdminProductListProps {
     initialProducts: Product[]
 }
 
 export default function AdminProductList({ initialProducts }: AdminProductListProps) {
-
+    const [isAdding, setIsAdding] = useState(false)
 
     return (
         <div className="space-y-4">
+            <div className="flex justify-end">
+                {!isAdding && (
+                    <Button onClick={() => setIsAdding(true)} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Product Toevoegen
+                    </Button>
+                )}
+            </div>
+
+            {isAdding && (
+                <AddProductForm
+                    onSuccess={() => setIsAdding(false)}
+                    onCancel={() => setIsAdding(false)}
+                />
+            )}
+
             <div className="rounded-md border bg-card">
                 <div className="grid grid-cols-12 gap-4 p-4 font-medium text-sm text-muted-foreground border-b bg-muted/40">
                     <div className="col-span-4">Naam</div>
