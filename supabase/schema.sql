@@ -34,7 +34,8 @@ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 -- ORDERS
 CREATE TABLE orders (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    company_name TEXT,
+    email TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     week_number INTEGER,
     status TEXT DEFAULT 'pending'
@@ -66,18 +67,10 @@ CREATE POLICY "Users read own profile" ON profiles FOR SELECT USING (auth.uid() 
 CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Admin all profiles" ON profiles FOR ALL USING (auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin'));
 
--- Orders: Users read/create own. Admins all.
-CREATE POLICY "Users read own orders" ON orders FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users create own orders" ON orders FOR INSERT WITH CHECK (auth.uid() = user_id);
+-- Orders: Admins all.
 CREATE POLICY "Admin all orders" ON orders FOR ALL USING (auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin'));
 
--- Order Items: Users read own (via order). Admins all.
-CREATE POLICY "Users read own order items" ON order_items FOR SELECT USING (
-    EXISTS (SELECT 1 FROM orders WHERE orders.id = order_items.order_id AND orders.user_id = auth.uid())
-);
-CREATE POLICY "Users create own order items" ON order_items FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM orders WHERE orders.id = order_items.order_id AND orders.user_id = auth.uid())
-);
+-- Order Items: Admins all.
 CREATE POLICY "Admin all order items" ON order_items FOR ALL USING (auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin'));
 
 -- Handle new user signup (Trigger)

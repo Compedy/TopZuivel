@@ -31,7 +31,6 @@ export default async function AdminPage() {
         .from('orders')
         .select(`
             *,
-            profiles (business_name, email),
             order_items (
                 id,
                 quantity,
