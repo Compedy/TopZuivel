@@ -37,8 +37,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                     <Card key={order.id} className="overflow-hidden">
                         <CardHeader className="bg-muted/50 py-3 flex flex-row items-center justify-between border-b">
                             <div className="flex flex-col">
-                                <span className="font-bold">{order.profiles?.business_name || order.company_name || 'Onbekende Klant'}</span>
-                                <span className="text-xs text-muted-foreground">{order.profiles?.email || order.email}</span>
+                                <span className="font-bold">{order.company_name || order.profiles?.business_name || 'Onbekende Klant'}</span>
+                                <span className="text-xs text-muted-foreground">{order.email || order.profiles?.email}</span>
                             </div>
                             <div className="flex flex-col items-end gap-1">
                                 <Badge variant={order.status === 'pending' ? 'default' : 'secondary'}>
