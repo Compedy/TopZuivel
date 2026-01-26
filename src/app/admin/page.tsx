@@ -33,6 +33,7 @@ export default async function AdminPage() {
             *,
             order_items (
                 id,
+                product_id,
                 quantity,
                 price_snapshot,
                 products (name, unit_label)
