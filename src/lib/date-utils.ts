@@ -5,7 +5,15 @@
  * This effectively shifts the week start 1 hour earlier than the standard Monday 00:00.
  */
 
-export function getCustomWeekData(date: Date) {
+export interface WeekData {
+    weekNumber: number
+    weekStart: Date
+    weekEnd: Date
+    display: string
+    year: number
+}
+
+export function getCustomWeekData(date: Date): WeekData {
     // Shift the date 1 hour forward to handle the 23:00 boundary
     const shiftedDate = new Date(date.getTime() + 60 * 60 * 1000);
 
@@ -48,11 +56,13 @@ function formatDateShort(date: Date) {
     });
 }
 
+import { OrderWithItems } from '@/types'
+
 /**
  * Groups orders by their custom week.
  */
-export function groupOrdersByWeek(orders: any[]) {
-    const groups: Record<string, { weekData: any, orders: any[] }> = {};
+export function groupOrdersByWeek(orders: OrderWithItems[]) {
+    const groups: Record<string, { weekData: WeekData, orders: OrderWithItems[] }> = {};
 
     orders.forEach(order => {
         const date = new Date(order.created_at);

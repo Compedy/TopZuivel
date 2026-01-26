@@ -4,9 +4,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { OrderWithItems } from '@/types'
 
 interface AdminOrderListProps {
-    initialOrders: any[]
+    initialOrders: OrderWithItems[]
 }
 
 export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
@@ -57,7 +58,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {order.order_items.map((item: any) => (
+                                    {order.order_items.map((item) => (
                                         <tr key={item.id}>
                                             <td className="py-2 px-4">{item.products?.name}</td>
                                             <td className="py-2 px-4 text-right">

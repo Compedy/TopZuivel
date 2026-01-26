@@ -172,7 +172,7 @@ export async function adminLogin(formData: FormData) {
     return { success: false, error: 'Ongeldige inloggegevens' }
 }
 
-export async function adminLogout(_formData?: FormData) {
+export async function adminLogout() {
     const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
     cookieStore.delete('admin_session')

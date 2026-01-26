@@ -155,3 +155,12 @@ export type Order = Database['public']['Tables']['orders']['Row']
 export type OrderItem = Database['public']['Tables']['order_items']['Row']
 export type RecurringOrder = Database['public']['Tables']['recurring_orders']['Row']
 export type RecurringOrderItem = Database['public']['Tables']['recurring_order_items']['Row']
+
+export type OrderWithItems = Order & {
+    order_items: (OrderItem & {
+        products: {
+            name: string
+            unit_label: string
+        } | null
+    })[]
+}

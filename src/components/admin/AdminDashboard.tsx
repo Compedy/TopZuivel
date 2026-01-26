@@ -1,7 +1,7 @@
 
 'use client'
 
-import { Product } from '@/types'
+import { Product, OrderWithItems } from '@/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import AdminProductList from './AdminProductList'
 import AdminOrderList from './AdminOrderList'
@@ -11,7 +11,7 @@ import AdminRecurringOverview from './AdminRecurringOverview'
 
 interface AdminDashboardProps {
     initialProducts: Product[]
-    initialOrders: any[]
+    initialOrders: OrderWithItems[]
 }
 
 export default function AdminDashboard({ initialProducts, initialOrders }: AdminDashboardProps) {

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import AdminDashboard from '@/components/admin/AdminDashboard'
 import AdminLoginForm from '@/components/admin/AdminLoginForm'
 import { adminLogout } from '@/app/actions'
-import { Button } from '@/components/ui/button' // Assuming we can use this or make a Client Component for logout
+import { Button } from '@/components/ui/button'
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 

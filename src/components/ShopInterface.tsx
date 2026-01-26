@@ -6,9 +6,6 @@ import { Product } from '@/types'
 import ProductRow from './ProductRow'
 import CartModal from './CartModal'
 import { Button } from './ui/button'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { LogOut } from 'lucide-react'
 
 // Simple helper to group by property since we might not have lodash installed yet
 function groupProductsByCategory(products: Product[]) {
@@ -35,10 +32,6 @@ export type CartItem = {
 
 export default function ShopInterface({ products }: ShopInterfaceProps) {
     const [cart, setCart] = useState<Record<string, number>>({})
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [orderPlaced, setOrderPlaced] = useState(false)
-    const router = useRouter()
-    const supabase = createClient()
 
     const groupedProducts = useMemo(() => groupProductsByCategory(products), [products])
     const categories = Object.keys(groupedProducts).sort() // Or custom logic if needed
@@ -69,7 +62,6 @@ export default function ShopInterface({ products }: ShopInterfaceProps) {
 
     const resetCart = () => {
         setCart({})
-        setOrderPlaced(false)
     }
 
     const scrollToCategory = (category: string) => {

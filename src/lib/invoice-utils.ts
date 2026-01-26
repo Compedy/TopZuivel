@@ -1,5 +1,4 @@
-
-import { Product } from '@/types'
+import { Product, OrderWithItems } from '@/types'
 
 export interface CustomerMonthlyTotal {
     email: string
@@ -16,13 +15,13 @@ export interface CustomerMonthlyTotal {
     grandTotal: number
 }
 
-export function groupOrdersByMonthAndCustomer(orders: any[], products: Product[]): Record<string, CustomerMonthlyTotal[]> {
+export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products: Product[]): Record<string, CustomerMonthlyTotal[]> {
     const months: Record<string, Record<string, any>> = {}
 
     orders.forEach(order => {
         const date = new Date(order.created_at)
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        const email = order.email
+        const email = order.email || 'gast@topzuivel.nl'
 
         if (!months[monthKey]) months[monthKey] = {}
         if (!months[monthKey][email]) {
@@ -48,8 +47,8 @@ export function groupOrdersByMonthAndCustomer(orders: any[], products: Product[]
 
             const itemTotals: Record<string, { quantity: number, price: number }> = {}
 
-            customer.orders.forEach((order: any) => {
-                order.order_items?.forEach((item: any) => {
+            customer.orders.forEach((order: OrderWithItems) => {
+                order.order_items?.forEach((item) => {
                     const pid = item.product_id
                     if (!pid) return
                     if (!itemTotals[pid]) {

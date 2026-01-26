@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Product, RecurringOrder, RecurringOrderItem } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -34,12 +34,12 @@ export default function AdminRecurringOverview({ products }: AdminRecurringOverv
     const [editingOrder, setEditingOrder] = useState<RecurringOrderWithItems | undefined>()
     const [conversionStatus, setConversionStatus] = useState<{ success?: boolean, msg?: string } | null>(null)
 
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         setIsLoading(true)
         const data = await getRecurringOrders()
         setRecurringOrders(data as RecurringOrderWithItems[])
         setIsLoading(false)
-    }
+    }, [])
 
     useEffect(() => {
         fetchOrders()
@@ -73,9 +73,6 @@ export default function AdminRecurringOverview({ products }: AdminRecurringOverv
         }
     }
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price)
-    }
 
     return (
         <div className="space-y-6">

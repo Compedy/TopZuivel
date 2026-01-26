@@ -1,8 +1,8 @@
 
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Product } from '@/types'
+import { useState, useMemo, useEffect } from 'react'
+import { Product, OrderWithItems } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getCustomWeekData, groupOrdersByWeek } from '@/lib/date-utils'
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 interface AdminWeekOverviewProps {
     products: Product[]
-    orders: any[]
+    orders: OrderWithItems[]
 }
 
 export default function AdminWeekOverview({ products, orders }: AdminWeekOverviewProps) {
@@ -45,9 +45,15 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             }
         }
 
-        // Always expand the first week by default
-        if (groups.length > 0) {
-            const firstKey = `${groups[0].weekData.year}-W${groups[0].weekData.weekNumber}`
+
+
+        return groups
+    }, [orders])
+
+    // Always expand the first week by default
+    useEffect(() => {
+        if (weekGroups.length > 0) {
+            const firstKey = `${weekGroups[0].weekData.year}-W${weekGroups[0].weekData.weekNumber}`
             setExpandedWeeks(prev => {
                 if (Object.keys(prev).length === 0) {
                     return { [firstKey]: true };
@@ -55,9 +61,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                 return prev;
             })
         }
-
-        return groups
-    }, [orders])
+    }, [weekGroups])
 
     const toggleWeek = (key: string) => {
         setExpandedWeeks(prev => ({
@@ -66,11 +70,11 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
         }))
     }
 
-    const calculateTotals = (weekOrders: any[]) => {
+    const calculateTotals = (weekOrders: OrderWithItems[]) => {
         const totals: Record<string, number> = {}
 
         weekOrders.forEach(order => {
-            order.order_items?.forEach((item: any) => {
+            order.order_items?.forEach((item) => {
                 const productId = item.product_id
                 if (productId) {
                     totals[productId] = (totals[productId] || 0) + item.quantity
