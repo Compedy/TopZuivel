@@ -1,8 +1,8 @@
 {
     "crons": [
         {
-            "path": "/api/cron/monday-report",
-            "schedule": "0 4 * * 1"
+            "path": "/api/recurring/convert",
+            "schedule": "0 4 * * 5"
         }
     ]
 }
