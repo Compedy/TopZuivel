@@ -10,29 +10,6 @@ export type Json =
 export interface Database {
     public: {
         Tables: {
-            profiles: {
-                Row: {
-                    id: string
-                    business_name: string | null
-                    email: string | null
-                    role: 'admin' | 'customer'
-                    created_at: string
-                }
-                Insert: {
-                    id: string
-                    business_name?: string | null
-                    email?: string | null
-                    role?: 'admin' | 'customer'
-                    created_at?: string
-                }
-                Update: {
-                    id?: string
-                    business_name?: string | null
-                    email?: string | null
-                    role?: 'admin' | 'customer'
-                    created_at?: string
-                }
-            }
             products: {
                 Row: {
                     id: string
@@ -120,6 +97,55 @@ export interface Database {
                     price_snapshot?: number
                 }
             }
+            recurring_orders: {
+                Row: {
+                    id: string
+                    company_name: string
+                    email: string
+                    price_modifier: number
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    company_name: string
+                    email: string
+                    price_modifier?: number
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    company_name?: string
+                    email?: string
+                    price_modifier?: number
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            recurring_order_items: {
+                Row: {
+                    id: string
+                    recurring_order_id: string
+                    product_id: string
+                    quantity: number
+                }
+                Insert: {
+                    id?: string
+                    recurring_order_id: string
+                    product_id: string
+                    quantity: number
+                }
+                Update: {
+                    id?: string
+                    recurring_order_id?: string
+                    product_id?: string
+                    quantity?: number
+                }
+            }
         }
     }
 }
@@ -127,4 +153,5 @@ export interface Database {
 export type Product = Database['public']['Tables']['products']['Row']
 export type Order = Database['public']['Tables']['orders']['Row']
 export type OrderItem = Database['public']['Tables']['order_items']['Row']
-export type Profile = Database['public']['Tables']['profiles']['Row']
+export type RecurringOrder = Database['public']['Tables']['recurring_orders']['Row']
+export type RecurringOrderItem = Database['public']['Tables']['recurring_order_items']['Row']

@@ -44,9 +44,7 @@ export async function GET(request: NextRequest) {
       ),
       orders (
          created_at,
-         profiles (
-           business_name
-         )
+         company_name
       )
     `)
     .gte('orders.created_at', sevenDaysAgo.toISOString())
