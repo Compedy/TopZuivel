@@ -5,6 +5,7 @@ import { Product } from '@/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import AdminProductList from './AdminProductList'
 import AdminOrderList from './AdminOrderList'
+import AdminWeekOverview from './AdminWeekOverview'
 
 interface AdminDashboardProps {
     initialProducts: Product[]
@@ -15,12 +16,16 @@ export default function AdminDashboard({ initialProducts, initialOrders }: Admin
     // We can add realtime subscriptions here if needed
     return (
         <Tabs defaultValue="orders" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+            <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
                 <TabsTrigger value="orders">Bestellingen</TabsTrigger>
+                <TabsTrigger value="weeks">Week Overzicht</TabsTrigger>
                 <TabsTrigger value="products">Product Beheer</TabsTrigger>
             </TabsList>
             <TabsContent value="orders" className="mt-4">
                 <AdminOrderList initialOrders={initialOrders} />
+            </TabsContent>
+            <TabsContent value="weeks" className="mt-4">
+                <AdminWeekOverview orders={initialOrders} products={initialProducts} />
             </TabsContent>
             <TabsContent value="products" className="mt-4">
                 <AdminProductList initialProducts={initialProducts} />
