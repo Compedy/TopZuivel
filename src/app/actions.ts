@@ -100,7 +100,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
 
             // 1. Send to Admin
             await resend.emails.send({
-                from: fromEmail,
+                from: `Top Zuivel <${fromEmail}>`,
                 to: adminEmail,
                 replyTo: adminEmail, // As requested: reply-to should be admin-email
                 subject: `Nieuwe Bestelling: ${companyName}`,
@@ -129,7 +129,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             `
 
             await resend.emails.send({
-                from: fromEmail,
+                from: `Top Zuivel <${fromEmail}>`,
                 to: email, // Send to customer
                 replyTo: adminEmail,
                 subject: `Bevestiging Bestelling Week ${currentWeek} - Top Zuivel`,

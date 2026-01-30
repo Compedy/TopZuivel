@@ -16,8 +16,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="nl">
-      <body className={inter.className}>
-        {children}
+      <body className={`${inter.className} flex flex-col min-h-screen`}>
+        <div className="flex-1">
+          {children}
+        </div>
+        <footer className="py-6 border-t border-border mt-auto">
+          <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+            created by <a href="https://compedy.com" target="_blank" rel="noopener noreferrer" className="hover:underline font-medium text-foreground">Compedy</a>
+          </div>
+        </footer>
       </body>
     </html>
   );
