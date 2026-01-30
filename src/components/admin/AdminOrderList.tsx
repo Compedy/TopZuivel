@@ -123,76 +123,108 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         setSaving(null)
     }
 
-    const generatePDF = (order: OrderWithItems) => {
-        const doc = new jsPDF()
-        const today = new Date().toLocaleDateString('nl-NL')
-        const orderDate = new Date(order.created_at).toLocaleDateString('nl-NL')
-
-        // Add Logo
-        const logoUrl = 'https://top-zuivel.nl/wp-content/uploads/2022/05/cropped-Logo-het-lage-eind-01.png'
-        doc.addImage(logoUrl, 'PNG', 15, 10, 40, 20)
-
-        // Header Info
-        doc.setFontSize(20)
-        doc.setTextColor(44, 62, 80)
-        doc.text('Order Overzicht', 70, 25)
-
-        doc.setFontSize(10)
-        doc.setTextColor(100)
-        doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
-        doc.text(`Email: ${order.email}`, 15, 52)
-        doc.text(`Besteldatum: ${orderDate}`, 15, 59)
-        doc.text(`Leverdatum: ${today}`, 15, 66)
-
-        // Table
-        const tableData = order.order_items.map(item => {
-            const standardWeight = item.products?.weight_per_unit || 1
-            const weight = item.quantity * standardWeight
-            const isPerKilo = item.products?.is_price_per_kilo
-            const totalPrice = isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
-
-            return [
-                item.products?.name || 'Onbekend product',
-                `${item.quantity} ${item.products?.unit_label || 'st'}`,
-                `${weight.toFixed(3)} kg`,
-                formatPrice(item.price_snapshot) + (isPerKilo ? '/kg' : ''),
-                formatPrice(totalPrice)
-            ]
+    const getBase64ImageFromURL = (url: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image()
+            img.setAttribute('crossOrigin', 'anonymous')
+            img.onload = () => {
+                const canvas = document.createElement('canvas')
+                canvas.width = img.width
+                canvas.height = img.height
+                const ctx = canvas.getContext('2d')
+                ctx?.drawImage(img, 0, 0)
+                const dataURL = canvas.toDataURL('image/png')
+                resolve(dataURL)
+            }
+            img.onerror = (error) => reject(error)
+            img.src = url
         })
+    }
 
-        autoTable(doc, {
-            startY: 75,
-            head: [['Product', 'Aantal', 'Gewicht', 'Prijs (één)', 'Totaal']],
-            body: tableData,
-            theme: 'striped',
-            headStyles: { fillColor: [44, 62, 80] },
-            styles: { fontSize: 9 }
-        })
+    const generatePDF = async (order: OrderWithItems) => {
+        try {
+            const doc = new jsPDF()
+            const today = new Date().toLocaleDateString('nl-NL')
+            const orderDate = new Date(order.created_at).toLocaleDateString('nl-NL')
 
-        // Totals
-        const totalItems = order.order_items.reduce((sum, item) => sum + item.quantity, 0)
-        const totalPrice = order.order_items.reduce((sum, item) => {
-            const weight = item.quantity * (item.products?.weight_per_unit || 1)
-            const isPerKilo = item.products?.is_price_per_kilo
-            return sum + (isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot)
-        }, 0)
+            // Add Logo with try/catch for CORS/loading issues
+            try {
+                const logoUrl = 'https://top-zuivel.nl/wp-content/uploads/2022/05/cropped-Logo-het-lage-eind-01.png'
+                const imgData = await getBase64ImageFromURL(logoUrl)
+                doc.addImage(imgData, 'PNG', 15, 10, 40, 20)
+            } catch (imgError) {
+                console.warn('Could not load logo for PDF:', imgError)
+                // Continue without logo
+                doc.setFontSize(18)
+                doc.setTextColor(44, 62, 80)
+                doc.text('TOP ZUIVEL', 15, 20)
+            }
 
-        const lastY = (doc as any).lastAutoTable.finalY + 10
-        doc.setFont('helvetica', 'bold')
-        doc.text(`Totaal aantal items: ${totalItems}`, 15, lastY)
-        doc.setFontSize(14)
-        doc.text(`Totaal bedrag: ${formatPrice(totalPrice)}`, 15, lastY + 10)
+            // Header Info
+            doc.setFontSize(20)
+            doc.setTextColor(44, 62, 80)
+            doc.text('Order Overzicht', 70, 25)
 
-        // Footer
-        doc.setFontSize(8)
-        doc.setFont('helvetica', 'italic')
-        doc.text('Top Zuivel - Vers van de boerderij', 15, 285)
+            doc.setFontSize(10)
+            doc.setTextColor(100)
+            doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
+            doc.text(`Email: ${order.email}`, 15, 52)
+            doc.text(`Besteldatum: ${orderDate}`, 15, 59)
+            doc.text(`Leverdatum: ${today}`, 15, 66)
 
-        doc.save(`TopZuivel_Order_${order.company_name}_${today}.pdf`)
+            // Table
+            const tableData = order.order_items.map(item => {
+                const standardWeight = item.products?.weight_per_unit || 1
+                const weight = item.quantity * standardWeight
+                const isPerKilo = item.products?.is_price_per_kilo
+                const totalPrice = isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
+
+                return [
+                    item.products?.name || 'Onbekend product',
+                    `${item.quantity} ${item.products?.unit_label || 'st'}`,
+                    `${weight.toFixed(3)} kg`,
+                    formatPrice(item.price_snapshot) + (isPerKilo ? '/kg' : ''),
+                    formatPrice(totalPrice)
+                ]
+            })
+
+            autoTable(doc, {
+                startY: 75,
+                head: [['Product', 'Aantal', 'Gewicht', 'Prijs (één)', 'Totaal']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [44, 62, 80] },
+                styles: { fontSize: 9 }
+            })
+
+            // Totals
+            const totalItems = order.order_items.reduce((sum, item) => sum + item.quantity, 0)
+            const totalPrice = order.order_items.reduce((sum, item) => {
+                const weight = item.quantity * (item.products?.weight_per_unit || 1)
+                const isPerKilo = item.products?.is_price_per_kilo
+                return sum + (isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot)
+            }, 0)
+
+            const lastY = (doc as any).lastAutoTable.finalY + 10
+            doc.setFont('helvetica', 'bold')
+            doc.text(`Totaal aantal items: ${totalItems}`, 15, lastY)
+            doc.setFontSize(14)
+            doc.text(`Totaal bedrag: ${formatPrice(totalPrice)}`, 15, lastY + 10)
+
+            // Footer
+            doc.setFontSize(8)
+            doc.setFont('helvetica', 'italic')
+            doc.text('Top Zuivel - Vers van de boerderij', 15, 285)
+
+            doc.save(`TopZuivel_Order_${order.company_name}_${today}.pdf`)
+        } catch (err) {
+            console.error('General PDF error:', err)
+            alert('Fout bij het genereren van de PDF. Controleer de console voor details.')
+        }
     }
 
     const completeOrder = async (order: OrderWithItems) => {
-        // First check if there are unsaved changes (though my current UI saves per line)
+        // First check if there are unsaved changes
         if (Object.keys(editingItems).length > 0) {
             if (!confirm('Er zijn nog niet-opgeslagen wijzigingen. Wilt u doorgaan en deze negeren?')) {
                 return
@@ -200,14 +232,20 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         }
 
         setCompleting(order.id)
-        const result = await updateOrderStatus(order.id, 'completed')
-        if (result.success) {
-            generatePDF(order)
-            setExpandedOrder(null)
-        } else {
-            alert('Fout bij afronden bestelling: ' + result.error)
+        try {
+            const result = await updateOrderStatus(order.id, 'completed')
+            if (result.success) {
+                await generatePDF(order)
+                setExpandedOrder(null)
+            } else {
+                alert('Fout bij afronden bestelling: ' + result.error)
+            }
+        } catch (error) {
+            alert('Systeemfout bij afronden bestelling.')
+            console.error(error)
+        } finally {
+            setCompleting(null)
         }
-        setCompleting(order.id)
     }
 
     return (
