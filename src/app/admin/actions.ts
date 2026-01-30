@@ -241,3 +241,25 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
     revalidatePath('/admin')
     return { success: true }
 }
+
+export async function updateOrderStatus(orderId: string, status: string) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    const { error } = await adminSupabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId)
+
+    if (error) {
+        console.error('Update order status error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}

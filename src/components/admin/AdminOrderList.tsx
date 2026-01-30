@@ -1,13 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { OrderWithItems } from '@/types'
-import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw } from 'lucide-react'
-import { updateOrderItemQuantity } from '@/app/admin/actions'
+import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText } from 'lucide-react'
+import { updateOrderItemQuantity, updateOrderStatus } from '@/app/admin/actions'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 interface AdminOrderListProps {
     initialOrders: OrderWithItems[]
@@ -17,6 +21,12 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
     const [editingItems, setEditingItems] = useState<Record<string, { totalWeight: number, units: number[], isExpanded: boolean }>>({})
     const [saving, setSaving] = useState<string | null>(null)
+    const [completing, setCompleting] = useState<string | null>(null)
+    const [showCompleted, setShowCompleted] = useState(false)
+
+    const filteredOrders = useMemo(() => {
+        return initialOrders.filter(order => showCompleted ? true : order.status !== 'completed')
+    }, [initialOrders, showCompleted])
 
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('nl-NL', {
@@ -113,17 +123,121 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         setSaving(null)
     }
 
+    const generatePDF = (order: OrderWithItems) => {
+        const doc = new jsPDF()
+        const today = new Date().toLocaleDateString('nl-NL')
+        const orderDate = new Date(order.created_at).toLocaleDateString('nl-NL')
+
+        // Add Logo
+        const logoUrl = 'https://top-zuivel.nl/wp-content/uploads/2022/05/cropped-Logo-het-lage-eind-01.png'
+        doc.addImage(logoUrl, 'PNG', 15, 10, 40, 20)
+
+        // Header Info
+        doc.setFontSize(20)
+        doc.setTextColor(44, 62, 80)
+        doc.text('Order Overzicht', 70, 25)
+
+        doc.setFontSize(10)
+        doc.setTextColor(100)
+        doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
+        doc.text(`Email: ${order.email}`, 15, 52)
+        doc.text(`Besteldatum: ${orderDate}`, 15, 59)
+        doc.text(`Leverdatum: ${today}`, 15, 66)
+
+        // Table
+        const tableData = order.order_items.map(item => {
+            const standardWeight = item.products?.weight_per_unit || 1
+            const weight = item.quantity * standardWeight
+            const isPerKilo = item.products?.is_price_per_kilo
+            const totalPrice = isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
+
+            return [
+                item.products?.name || 'Onbekend product',
+                `${item.quantity} ${item.products?.unit_label || 'st'}`,
+                `${weight.toFixed(3)} kg`,
+                formatPrice(item.price_snapshot) + (isPerKilo ? '/kg' : ''),
+                formatPrice(totalPrice)
+            ]
+        })
+
+        autoTable(doc, {
+            startY: 75,
+            head: [['Product', 'Aantal', 'Gewicht', 'Prijs (één)', 'Totaal']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [44, 62, 80] },
+            styles: { fontSize: 9 }
+        })
+
+        // Totals
+        const totalItems = order.order_items.reduce((sum, item) => sum + item.quantity, 0)
+        const totalPrice = order.order_items.reduce((sum, item) => {
+            const weight = item.quantity * (item.products?.weight_per_unit || 1)
+            const isPerKilo = item.products?.is_price_per_kilo
+            return sum + (isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot)
+        }, 0)
+
+        const lastY = (doc as any).lastAutoTable.finalY + 10
+        doc.setFont('helvetica', 'bold')
+        doc.text(`Totaal aantal items: ${totalItems}`, 15, lastY)
+        doc.setFontSize(14)
+        doc.text(`Totaal bedrag: ${formatPrice(totalPrice)}`, 15, lastY + 10)
+
+        // Footer
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'italic')
+        doc.text('Top Zuivel - Vers van de boerderij', 15, 285)
+
+        doc.save(`TopZuivel_Order_${order.company_name}_${today}.pdf`)
+    }
+
+    const completeOrder = async (order: OrderWithItems) => {
+        // First check if there are unsaved changes (though my current UI saves per line)
+        if (Object.keys(editingItems).length > 0) {
+            if (!confirm('Er zijn nog niet-opgeslagen wijzigingen. Wilt u doorgaan en deze negeren?')) {
+                return
+            }
+        }
+
+        setCompleting(order.id)
+        const result = await updateOrderStatus(order.id, 'completed')
+        if (result.success) {
+            generatePDF(order)
+            setExpandedOrder(null)
+        } else {
+            alert('Fout bij afronden bestelling: ' + result.error)
+        }
+        setCompleting(order.id)
+    }
+
     return (
-        <div className="space-y-4">
-            {initialOrders.length === 0 ? (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <h2 className="font-bold text-lg">Bestellingen Beheer</h2>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Label htmlFor="show-completed" className="text-sm text-muted-foreground">Toon voltooid</Label>
+                    <Switch
+                        id="show-completed"
+                        checked={showCompleted}
+                        onCheckedChange={setShowCompleted}
+                    />
+                </div>
+            </div>
+
+            {filteredOrders.length === 0 ? (
                 <Card>
                     <CardContent className="pt-6 text-center text-muted-foreground">Geen bestellingen gevonden.</CardContent>
                 </Card>
             ) : (
-                initialOrders.map(order => {
+                filteredOrders.map(order => {
                     const isExpanded = expandedOrder === order.id
+                    const isCompleted = order.status === 'completed'
+
                     return (
-                        <Card key={order.id} className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-2 ring-primary shadow-lg border-l-4 border-l-primary' : 'hover:shadow-md'}`}>
+                        <Card key={order.id} className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-2 ring-primary shadow-lg border-l-4 border-l-primary' : 'hover:shadow-md'} ${isCompleted ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                             <CardHeader
                                 className={`bg-muted/30 py-4 flex flex-row items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? 'border-b' : ''}`}
                                 onClick={() => toggleOrder(order.id)}
@@ -131,8 +245,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
                                         <span className="font-bold text-lg">{order.company_name || 'Onbekende Klant'}</span>
-                                        <Badge variant={order.status === 'pending' ? 'default' : 'secondary'} className="text-[10px] uppercase">
-                                            {order.status}
+                                        <Badge variant={isCompleted ? 'outline' : order.status === 'pending' ? 'default' : 'secondary'} className={`text-[10px] uppercase ${isCompleted ? 'bg-green-100 text-green-700 border-green-200' : ''}`}>
+                                            {order.status === 'completed' ? 'voldaan' : order.status}
                                         </Badge>
                                     </div>
                                     <span className="text-xs text-muted-foreground">{order.email}</span>
@@ -186,7 +300,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </td>
                                                             <td className="py-4 px-4 text-right">
                                                                 <div className="flex flex-col items-end gap-2">
-                                                                    {isCheese ? (
+                                                                    {isCheese && !isCompleted ? (
                                                                         <div className="flex flex-col items-end gap-1">
                                                                             {!editData?.isExpanded ? (
                                                                                 <div className="flex items-center gap-2">
@@ -263,43 +377,45 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                         </div>
                                                                     ) : (
                                                                         <div className="flex flex-col items-end">
-                                                                            <span className="text-muted-foreground text-xs italic">Niet aanpasbaar</span>
+                                                                            <span className="text-muted-foreground text-xs italic">{isCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
                                                                             <div className="text-xs font-bold text-muted-foreground">
-                                                                                Subtotaal: {formatPrice(item.quantity * item.price_snapshot)}
+                                                                                Subtotaal: {formatPrice(rowTotalPrice)}
                                                                             </div>
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             </td>
                                                             <td className="py-4 px-4 text-right">
-                                                                <div className="flex flex-col gap-1">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-8 w-full gap-1"
-                                                                        disabled={!editData || saving === item.id || !hasChanged}
-                                                                        onClick={() => saveWeight(item.id, standardWeight)}
-                                                                    >
-                                                                        {saving === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                                                        Opslaan
-                                                                    </Button>
-                                                                    {hasChanged && (
+                                                                {!isCompleted && isCheese && (
+                                                                    <div className="flex flex-col gap-1">
                                                                         <Button
-                                                                            variant="ghost"
                                                                             size="sm"
-                                                                            className="h-6 text-[10px] text-muted-foreground hover:text-destructive w-full"
-                                                                            onClick={() => {
-                                                                                setEditingItems(prev => {
-                                                                                    const newState = { ...prev }
-                                                                                    delete newState[item.id]
-                                                                                    return newState
-                                                                                })
-                                                                            }}
+                                                                            className="h-8 w-full gap-1"
+                                                                            disabled={!editData || saving === item.id || !hasChanged}
+                                                                            onClick={() => saveWeight(item.id, standardWeight)}
                                                                         >
-                                                                            <RotateCcw className="h-3 w-3 mr-1" />
-                                                                            Herstellen
+                                                                            {saving === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                                            Opslaan
                                                                         </Button>
-                                                                    )}
-                                                                </div>
+                                                                        {hasChanged && (
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="h-6 text-[10px] text-muted-foreground hover:text-destructive w-full"
+                                                                                onClick={() => {
+                                                                                    setEditingItems(prev => {
+                                                                                        const newState = { ...prev }
+                                                                                        delete newState[item.id]
+                                                                                        return newState
+                                                                                    })
+                                                                                }}
+                                                                            >
+                                                                                <RotateCcw className="h-3 w-3 mr-1" />
+                                                                                Herstellen
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     )
@@ -307,11 +423,33 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="p-4 bg-muted/20 border-t flex flex-col md:flex-row justify-between items-center gap-4">
-                                        <div className="text-xs text-muted-foreground italic">
-                                            * Totale prijsindicatie op basis van actuele gewichten.
+                                    <div className="p-4 bg-muted/20 border-t flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                        <div className="space-y-2">
+                                            <div className="text-xs text-muted-foreground italic">
+                                                * Totale prijsindicatie op basis van actuele gewichten.
+                                            </div>
+                                            {!isCompleted && (
+                                                <Button
+                                                    onClick={() => completeOrder(order)}
+                                                    disabled={completing === order.id}
+                                                    className="bg-green-600 hover:bg-green-700 text-white gap-2 font-bold shadow-md hover:shadow-lg transition-all"
+                                                >
+                                                    {completing === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                                    Bestelling Afronden & PDF
+                                                </Button>
+                                            )}
+                                            {isCompleted && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => generatePDF(order)}
+                                                    className="gap-2"
+                                                >
+                                                    <FileText className="h-4 w-4" />
+                                                    Bekijk PDF
+                                                </Button>
+                                            )}
                                         </div>
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-4 ml-auto">
                                             <span className="text-sm font-medium text-muted-foreground">Totaalindicatie:</span>
                                             <div className="text-2xl font-black text-primary">
                                                 {formatPrice(order.order_items.reduce((sum, item) => {
