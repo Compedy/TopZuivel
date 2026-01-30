@@ -17,6 +17,13 @@ interface AdminOrderListProps {
     initialOrders: OrderWithItems[]
 }
 
+const getDisplayQuantity = (qty: number, unit?: string) => {
+    if (unit === 'st') {
+        return Math.round(qty)
+    }
+    return qty
+}
+
 export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
     const [editingItems, setEditingItems] = useState<Record<string, { totalWeight: number, units: number[], isExpanded: boolean }>>({})
@@ -147,9 +154,9 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             const today = new Date().toLocaleDateString('nl-NL')
             const orderDate = new Date(order.created_at).toLocaleDateString('nl-NL')
 
-            // Add Logo with try/catch for CORS/loading issues
+            // Add Logo with try/catch for loading issues
             try {
-                const logoUrl = 'https://top-zuivel.nl/wp-content/uploads/2022/05/cropped-Logo-het-lage-eind-01.png'
+                const logoUrl = '/logo.png'
                 const imgData = await getBase64ImageFromURL(logoUrl)
                 doc.addImage(imgData, 'PNG', 15, 10, 40, 20)
             } catch (imgError) {
@@ -178,10 +185,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 const weight = item.quantity * standardWeight
                 const isPerKilo = item.products?.is_price_per_kilo
                 const totalPrice = isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
+                const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
 
                 return [
                     item.products?.name || 'Onbekend product',
-                    `${item.quantity} ${item.products?.unit_label || 'st'}`,
+                    `${displayQty} ${item.products?.unit_label || 'st'}`,
                     `${weight.toFixed(3)} kg`,
                     formatPrice(item.price_snapshot) + (isPerKilo ? '/kg' : ''),
                     formatPrice(totalPrice)
@@ -198,7 +206,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             })
 
             // Totals
-            const totalItems = order.order_items.reduce((sum, item) => sum + item.quantity, 0)
+            const totalItems = order.order_items.reduce((sum, item) => sum + getDisplayQuantity(item.quantity, item.products?.unit_label), 0)
             const totalPrice = order.order_items.reduce((sum, item) => {
                 const weight = item.quantity * (item.products?.weight_per_unit || 1)
                 const isPerKilo = item.products?.is_price_per_kilo
@@ -316,6 +324,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                     const displayWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
                                                     const hasChanged = Math.abs(displayWeight - (item.quantity * standardWeight)) > 0.0001
 
+                                                    const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
+
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
                                                         ? (displayWeight * item.price_snapshot)
                                                         : ((displayWeight / (standardWeight || 1)) * item.price_snapshot)
@@ -330,7 +340,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </td>
                                                             <td className="py-4 px-4 text-center">
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-semibold">{item.quantity} {item.products?.unit_label}</span>
+                                                                    <span className="font-semibold">{displayQty} {item.products?.unit_label}</span>
                                                                     <span className="text-[10px] text-muted-foreground bg-muted p-1 rounded mt-1">
                                                                         Standaard: {(item.quantity * standardWeight).toFixed(3)} kg
                                                                     </span>
