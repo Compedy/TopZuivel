@@ -36,7 +36,7 @@ export default async function AdminPage() {
                 product_id,
                 quantity,
                 price_snapshot,
-                products (name, unit_label)
+                products (name, unit_label, category, is_price_per_kilo, weight_per_unit)
             )
         `)
         .order('created_at', { ascending: false }) as any)

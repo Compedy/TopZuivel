@@ -219,3 +219,25 @@ export async function convertRecurringOrdersToReal() {
     revalidatePath('/admin')
     return { success: true, results }
 }
+
+export async function updateOrderItemQuantity(itemId: string, newQuantity: number) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    const { error } = await adminSupabase
+        .from('order_items')
+        .update({ quantity: newQuantity })
+        .eq('id', itemId)
+
+    if (error) {
+        console.error('Update order item error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}

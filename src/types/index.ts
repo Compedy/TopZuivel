@@ -161,6 +161,9 @@ export type OrderWithItems = Order & {
         products: {
             name: string
             unit_label: string
+            category: string
+            is_price_per_kilo: boolean
+            weight_per_unit: number
         } | null
     })[]
 }
