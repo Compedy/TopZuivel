@@ -177,7 +177,6 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
             doc.text(`Email: ${order.email}`, 15, 52)
             doc.text(`Besteldatum: ${orderDate}`, 15, 59)
-            doc.text(`Leverdatum: ${today}`, 15, 66)
 
             // Table
             const tableData = order.order_items.map(item => {

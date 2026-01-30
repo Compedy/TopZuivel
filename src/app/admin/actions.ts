@@ -263,3 +263,32 @@ export async function updateOrderStatus(orderId: string, status: string) {
     revalidatePath('/admin')
     return { success: true }
 }
+
+export async function updateStockLevels(updates: { id: string, stock_quantity: number }[]) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    // For simplicity and safety, we'll do individual updates in a promise all
+    const results = await Promise.all(updates.map(async (update) => {
+        const { error } = await adminSupabase
+            .from('products')
+            .update({ stock_quantity: update.stock_quantity })
+            .eq('id', update.id)
+
+        return { id: update.id, success: !error, error }
+    }))
+
+    const failed = results.filter(r => !r.success)
+    if (failed.length > 0) {
+        console.error('Some stock updates failed:', failed)
+        return { success: false, error: 'Sommige updates zijn mislukt' }
+    }
+
+    revalidatePath('/admin')
+    revalidatePath('/shop')
+    return { success: true }
+}

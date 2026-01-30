@@ -22,6 +22,7 @@ export interface Database {
                     weight_per_unit: number
                     is_active: boolean
                     sort_order: number | null
+                    stock_quantity: number
                 }
                 Insert: {
                     id?: string
@@ -34,6 +35,7 @@ export interface Database {
                     weight_per_unit: number
                     is_active?: boolean
                     sort_order?: number | null
+                    stock_quantity?: number
                 }
                 Update: {
                     id?: string
@@ -46,6 +48,7 @@ export interface Database {
                     weight_per_unit?: number
                     is_active?: boolean
                     sort_order?: number | null
+                    stock_quantity?: number
                 }
             }
             orders: {
@@ -164,6 +167,7 @@ export type OrderWithItems = Order & {
             category: string
             is_price_per_kilo: boolean
             weight_per_unit: number
+            stock_quantity: number
         } | null
     })[]
 }
