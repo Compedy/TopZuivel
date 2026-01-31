@@ -292,3 +292,19 @@ export async function updateStockLevels(updates: { id: string, stock_quantity: n
     revalidatePath('/shop')
     return { success: true }
 }
+
+export async function wakeUpDatabase() {
+    const adminSupabase = createAdminClient() as any
+    // Simple query to wake up the DB
+    const { data, error } = await adminSupabase
+        .from('products')
+        .select('id')
+        .limit(1)
+
+    if (error) {
+        console.error('Wake up database error:', error)
+        return { success: false, error: error.message }
+    }
+
+    return { success: true, count: data?.length || 0 }
+}
