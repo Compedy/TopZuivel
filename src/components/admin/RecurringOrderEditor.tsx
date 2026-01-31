@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Product, RecurringOrder, RecurringOrderItem } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,22 +36,39 @@ export default function RecurringOrderEditor({
     const [email, setEmail] = useState(existingOrder?.email || '')
     const [priceModifier, setPriceModifier] = useState(existingOrder?.price_modifier?.toString() || '0')
     const [cart, setCart] = useState<Record<string, number>>(
-        existingOrder?.recurring_order_items.reduce((acc, item) => ({ ...acc, [item.product_id]: item.quantity }), {}) || {}
+        existingOrder?.recurring_order_items.reduce((acc: Record<string, number>, item: RecurringOrderItem) => ({
+            ...acc,
+            [item.product_id]: item.quantity
+        }), {}) || {}
     )
     const [searchTerm, setSearchTerm] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    // Sync state when existingOrder changes or dialog opens
+    useEffect(() => {
+        if (open) {
+            setCompanyName(existingOrder?.company_name || '')
+            setEmail(existingOrder?.email || '')
+            setPriceModifier(existingOrder?.price_modifier?.toString() || '0')
+            setCart(existingOrder?.recurring_order_items.reduce((acc, item) => ({
+                ...acc,
+                [item.product_id]: item.quantity
+            }), {}) || {})
+            setSearchTerm('')
+        }
+    }, [open, existingOrder])
+
     const filteredProducts = useMemo(() => {
         if (!searchTerm) return products
         const term = searchTerm.toLowerCase()
-        return products.filter(p =>
+        return products.filter((p: Product) =>
             p.name.toLowerCase().includes(term) ||
             p.category.toLowerCase().includes(term)
         )
     }, [products, searchTerm])
 
     const handleQuantityChange = (productId: string, qty: number) => {
-        setCart(prev => {
+        setCart((prev: Record<string, number>) => {
             const next = { ...prev }
             if (qty <= 0) delete next[productId]
             else next[productId] = qty
@@ -65,7 +82,7 @@ export default function RecurringOrderEditor({
             return
         }
 
-        const items = Object.entries(cart).map(([product_id, quantity]) => ({
+        const items = Object.entries(cart).map(([product_id, quantity]: [string, number]) => ({
             product_id,
             quantity
         }))
@@ -111,7 +128,7 @@ export default function RecurringOrderEditor({
                             <Input
                                 id="company"
                                 value={companyName}
-                                onChange={e => setCompanyName(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompanyName(e.target.value)}
                                 placeholder="Bijv. Restaurant De Kroon"
                             />
                         </div>
@@ -121,7 +138,7 @@ export default function RecurringOrderEditor({
                                 id="email"
                                 type="email"
                                 value={email}
-                                onChange={e => setEmail(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                 placeholder="factuur@bedrijf.nl"
                             />
                         </div>
@@ -134,7 +151,7 @@ export default function RecurringOrderEditor({
                                 type="number"
                                 step="0.01"
                                 value={priceModifier}
-                                onChange={e => setPriceModifier(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPriceModifier(e.target.value)}
                                 placeholder="Bijv. -10 voor korting, 5 voor premium"
                             />
                             <p className="text-[10px] text-muted-foreground">Positief = duurder, Negatief = goedkoper</p>
@@ -152,12 +169,12 @@ export default function RecurringOrderEditor({
                                         placeholder="Zoek product..."
                                         className="pl-8 h-9 text-xs"
                                         value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                                     />
                                 </div>
                             </div>
                             <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
-                                {filteredProducts.map(product => (
+                                {filteredProducts.map((product: Product) => (
                                     <div key={product.id} className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
                                         <div>
                                             <p className="font-medium text-sm">{product.name}</p>
@@ -185,8 +202,8 @@ export default function RecurringOrderEditor({
                                         Nog geen producten geselecteerd
                                     </div>
                                 ) : (
-                                    Object.entries(cart).map(([pid, qty]) => {
-                                        const product = products.find(p => p.id === pid)
+                                    Object.entries(cart).map(([pid, qty]: [string, number]) => {
+                                        const product = products.find((p: Product) => p.id === pid)
                                         if (!product) return null
                                         return (
                                             <div key={pid} className="p-3 flex items-center justify-between bg-card">
@@ -199,7 +216,7 @@ export default function RecurringOrderEditor({
                                                         type="number"
                                                         className="w-16 h-8 text-xs text-right"
                                                         value={qty}
-                                                        onChange={e => handleQuantityChange(pid, parseFloat(e.target.value) || 0)}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleQuantityChange(pid, parseFloat(e.target.value) || 0)}
                                                     />
                                                     <Button
                                                         size="sm"
