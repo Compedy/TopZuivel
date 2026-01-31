@@ -305,8 +305,121 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                             </CardHeader>
                             {isExpanded && (
                                 <CardContent className="p-0 animate-in slide-in-from-top-2 duration-200">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
+                                    <div className="md:overflow-x-auto">
+                                        <div className="md:hidden space-y-4 p-4">
+                                            {order.order_items.map((item) => {
+                                                const isCheese = item.products?.category === 'Kaas'
+                                                const editData = editingItems[item.id]
+                                                const standardWeight = item.products?.weight_per_unit || 1
+                                                const displayWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
+                                                const hasChanged = Math.abs(displayWeight - (item.quantity * standardWeight)) > 0.0001
+                                                const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
+                                                const rowTotalPrice = item.products?.is_price_per_kilo
+                                                    ? (displayWeight * item.price_snapshot)
+                                                    : ((displayWeight / (standardWeight || 1)) * item.price_snapshot)
+
+                                                return (
+                                                    <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-muted/10">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="font-bold text-sm">
+                                                                {item.products?.name}
+                                                                {isCheese && (
+                                                                    <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
+                                                                <div className="text-[10px] text-muted-foreground">Basis: {(item.quantity * standardWeight).toFixed(3)} kg</div>
+                                                            </div>
+                                                        </div>
+
+                                                        {isCheese && !isCompleted ? (
+                                                            <div className="space-y-2">
+                                                                {!editData?.isExpanded ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="relative flex-1">
+                                                                            <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                                            <Input
+                                                                                type="number"
+                                                                                step="0.001"
+                                                                                value={displayWeight}
+                                                                                onChange={(e) => {
+                                                                                    initEditing(item)
+                                                                                    handleWeightChange(item.id, parseFloat(e.target.value))
+                                                                                }}
+                                                                                className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : 'border-input'}`}
+                                                                            />
+                                                                        </div>
+                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">kg</span>
+                                                                        {item.quantity >= 1 && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="icon"
+                                                                                className="h-10 w-10 text-blue-600 border-blue-200"
+                                                                                onClick={() => {
+                                                                                    initEditing(item)
+                                                                                    setTimeout(() => toggleUnitsExpand(item.id), 0)
+                                                                                }}
+                                                                            >
+                                                                                <ListTree className="h-4 w-4" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="bg-muted/50 p-2 rounded-md space-y-2 border shadow-inner">
+                                                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase text-muted-foreground px-1">
+                                                                            <span>Gewicht per stuk (kg)</span>
+                                                                            <button onClick={() => toggleUnitsExpand(item.id)} className="text-blue-600 underline">Sluiten</button>
+                                                                        </div>
+                                                                        {editData.units.map((unitWeight, idx) => (
+                                                                            <div key={idx} className="flex items-center gap-2">
+                                                                                <span className="text-[10px] w-4 text-muted-foreground">#{idx + 1}</span>
+                                                                                <Input
+                                                                                    type="number"
+                                                                                    step="0.001"
+                                                                                    value={unitWeight}
+                                                                                    onChange={(e) => handleUnitWeightChange(item.id, idx, parseFloat(e.target.value))}
+                                                                                    className="w-full h-8 text-right text-xs"
+                                                                                />
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between items-center border-t pt-2">
+                                                                    <div className="text-xs font-bold text-primary">Subtotaal: {formatPrice(rowTotalPrice)}</div>
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            size="sm"
+                                                                            disabled={!editData || saving === item.id || !hasChanged}
+                                                                            onClick={() => saveWeight(item.id, standardWeight)}
+                                                                            className="h-8 px-4"
+                                                                        >
+                                                                            {saving === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                                        </Button>
+                                                                        {hasChanged && (
+                                                                            <Button variant="ghost" size="sm" onClick={() => setEditingItems(prev => {
+                                                                                const newState = { ...prev };
+                                                                                delete newState[item.id];
+                                                                                return newState;
+                                                                            })} className="h-8 text-destructive">
+                                                                                <RotateCcw className="h-3 w-3" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex justify-between items-center border-t pt-2 text-xs">
+                                                                <span className="text-muted-foreground italic">{isCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
+                                                                <span className="font-bold">Subtotaal: {formatPrice(rowTotalPrice)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+
+                                        <table className="hidden md:table w-full text-sm">
                                             <thead className="bg-muted/50 text-muted-foreground border-b text-[11px] uppercase tracking-wider">
                                                 <tr>
                                                     <th className="py-3 px-4 text-left font-semibold">Product</th>
@@ -471,33 +584,33 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                         </table>
                                     </div>
                                     <div className="p-4 bg-muted/20 border-t flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div className="space-y-2">
-                                            <div className="text-xs text-muted-foreground italic">
+                                        <div className="space-y-2 w-full md:w-auto">
+                                            <div className="text-[10px] md:text-xs text-muted-foreground italic">
                                                 * Totale prijsindicatie op basis van actuele gewichten.
                                             </div>
                                             {!isCompleted && (
                                                 <Button
                                                     onClick={() => completeOrder(order)}
                                                     disabled={completing === order.id}
-                                                    className="bg-green-600 hover:bg-green-700 text-white gap-2 font-bold shadow-md hover:shadow-lg transition-all"
+                                                    className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white gap-2 font-bold shadow-md hover:shadow-lg transition-all"
                                                 >
                                                     {completing === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                                    Bestelling Afronden & PDF
+                                                    Afronden & PDF
                                                 </Button>
                                             )}
                                             {isCompleted && (
                                                 <Button
                                                     variant="outline"
                                                     onClick={() => generatePDF(order)}
-                                                    className="gap-2"
+                                                    className="w-full md:w-auto gap-2"
                                                 >
                                                     <FileText className="h-4 w-4" />
                                                     Bekijk PDF
                                                 </Button>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-4 ml-auto">
-                                            <span className="text-sm font-medium text-muted-foreground">Totaalindicatie:</span>
+                                        <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+                                            <span className="text-sm font-medium text-muted-foreground">Totaal:</span>
                                             <div className="text-2xl font-black text-primary">
                                                 {formatPrice(order.order_items.reduce((sum, item) => {
                                                     const editData = editingItems[item.id]

@@ -54,7 +54,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
     useEffect(() => {
         if (weekGroups.length > 0) {
             const firstKey = `${weekGroups[0].weekData.year}-W${weekGroups[0].weekData.weekNumber}`
-            setExpandedWeeks(prev => {
+            setExpandedWeeks((prev: Record<string, boolean>) => {
                 if (Object.keys(prev).length === 0) {
                     return { [firstKey]: true };
                 }
@@ -64,7 +64,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
     }, [weekGroups])
 
     const toggleWeek = (key: string) => {
-        setExpandedWeeks(prev => ({
+        setExpandedWeeks((prev: Record<string, boolean>) => ({
             ...prev,
             [key]: !prev[key]
         }))
@@ -104,64 +104,66 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                     <Card key={key} className={cn("overflow-hidden transition-all", isExpanded ? "ring-1 ring-primary/20" : "")}>
                         <CardHeader
                             className={cn(
-                                "py-4 px-6 flex flex-row items-center justify-between cursor-pointer hover:bg-muted/30 select-none",
+                                "py-3 px-4 md:py-4 md:px-6 flex flex-row items-center justify-between cursor-pointer hover:bg-muted/30 select-none",
                                 isCurrent ? "bg-primary/5" : "bg-muted/10"
                             )}
                             onClick={() => toggleWeek(key)}
                         >
-                            <div className="flex items-center gap-3">
-                                {isExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                            <div className="flex items-center gap-2 md:gap-3">
+                                {isExpanded ? <ChevronDown className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />}
                                 <div className="flex flex-col">
-                                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                                    <CardTitle className="text-sm md:text-base font-bold flex items-center gap-2">
                                         {group.weekData.display}
-                                        {isCurrent && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider">Huidig</span>}
+                                        {isCurrent && <span className="text-[9px] md:text-[10px] bg-primary/20 text-primary px-1.5 md:px-2 py-0.5 rounded-full uppercase tracking-wider">Huidig</span>}
                                     </CardTitle>
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-[10px] md:text-xs text-muted-foreground">
                                         {group.orders.length} {group.orders.length === 1 ? 'bestelling' : 'bestellingen'}
                                     </span>
                                 </div>
                             </div>
-                            <div className="text-sm font-medium text-muted-foreground">
+                            <div className="text-xs md:text-sm font-medium text-muted-foreground">
                                 {totals.length} {totals.length === 1 ? 'product' : 'producten'}
                             </div>
                         </CardHeader>
                         {isExpanded && (
                             <CardContent className="p-0 border-t">
                                 {totals.length === 0 ? (
-                                    <div className="p-8 text-center text-muted-foreground text-sm">
+                                    <div className="p-6 md:p-8 text-center text-muted-foreground text-sm">
                                         Nog geen producten besteld in deze week.
                                     </div>
                                 ) : (
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-muted/20 text-muted-foreground">
-                                            <tr>
-                                                <th className="py-2.5 px-6 text-left font-semibold">Product</th>
-                                                <th className="py-2.5 px-6 text-right font-semibold">Totaal Aantal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {totals.map(product => (
-                                                <tr key={product.id} className="hover:bg-muted/5 transition-colors">
-                                                    <td className="py-3 px-6">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium">{product.name}</span>
-                                                            <span className="text-xs text-muted-foreground">{product.category}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-6 text-right font-mono font-bold text-lg">
-                                                        {product.totalQuantity} <span className="text-xs font-normal text-muted-foreground">{product.unit_label}</span>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-muted/20 text-muted-foreground">
+                                                <tr>
+                                                    <th className="py-2 px-4 md:py-2.5 md:px-6 text-left font-semibold text-xs md:text-sm">Product</th>
+                                                    <th className="py-2 px-4 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Totaal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {totals.map(product => (
+                                                    <tr key={product.id} className="hover:bg-muted/5 transition-colors">
+                                                        <td className="py-2 px-4 md:py-3 md:px-6">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium text-xs md:text-sm">{product.name}</span>
+                                                                <span className="text-[10px] md:text-xs text-muted-foreground">{product.category}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-2 px-4 md:py-3 md:px-6 text-right font-mono font-bold text-base md:text-lg">
+                                                            {product.totalQuantity} <span className="text-[10px] md:text-xs font-normal text-muted-foreground">{product.unit_label}</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot className="bg-muted/5">
+                                                <tr>
+                                                    <td colSpan={2} className="py-2 px-4 md:px-6 text-[9px] md:text-[10px] text-muted-foreground italic">
+                                                        Producten worden getoond in de webshop-volgorde.
                                                     </td>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot className="bg-muted/5">
-                                            <tr>
-                                                <td colSpan={2} className="py-2 px-6 text-[10px] text-muted-foreground italic">
-                                                    Producten worden getoond in de webshop-volgorde.
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                            </tfoot>
+                                        </table>
+                                    </div>
                                 )}
                             </CardContent>
                         )}

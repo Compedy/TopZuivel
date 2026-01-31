@@ -47,19 +47,20 @@ export default async function AdminPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-card px-4 shadow-sm">
-                <h1 className="text-lg font-bold text-foreground md:text-xl">Top Zuivel Backoffice</h1>
-                <div className="ml-auto flex items-center gap-4">
-
-                    <Button asChild variant="outline" size="sm" className="gap-2">
+            <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center border-b border-border bg-card px-3 md:px-4 shadow-sm">
+                <h1 className="text-sm md:text-xl font-bold text-foreground flex-shrink-1 truncate mr-2">
+                    <span className="hidden sm:inline">Top Zuivel </span>Backoffice
+                </h1>
+                <div className="ml-auto flex items-center gap-2 md:gap-4">
+                    <Button asChild variant="outline" size="sm" className="h-8 px-2 md:px-4 gap-1 md:gap-2">
                         <Link href="/" target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                            Naar Winkel
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span className="text-xs md:text-sm">Winkel</span>
                         </Link>
                     </Button>
-                    <span className="text-sm text-muted-foreground hidden sm:inline-block">Admin Ingelogd</span>
+                    <span className="text-xs text-muted-foreground hidden lg:inline-block">Admin Status</span>
                     <form action={adminLogout}>
-                        <button type="submit" className="text-sm font-medium text-destructive hover:underline">
+                        <button type="submit" className="text-xs md:text-sm font-medium text-destructive hover:underline">
                             Uitloggen
                         </button>
                     </form>
