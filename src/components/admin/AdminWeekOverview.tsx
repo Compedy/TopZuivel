@@ -134,31 +134,56 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
-                                            <thead className="bg-muted/20 text-muted-foreground">
+                                            <thead className="bg-muted/20 text-muted-foreground border-b">
                                                 <tr>
-                                                    <th className="py-2 px-4 md:py-2.5 md:px-6 text-left font-semibold text-xs md:text-sm">Product</th>
-                                                    <th className="py-2 px-4 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Totaal</th>
+                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-left font-semibold text-xs md:text-sm">Product</th>
+                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Totaal</th>
+                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Voorraad</th>
+                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Productie</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y">
-                                                {totals.map(product => (
-                                                    <tr key={product.id} className="hover:bg-muted/5 transition-colors">
-                                                        <td className="py-2 px-4 md:py-3 md:px-6">
-                                                            <div className="flex flex-col">
-                                                                <span className="font-medium text-xs md:text-sm">{product.name}</span>
-                                                                <span className="text-[10px] md:text-xs text-muted-foreground">{product.category}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-2 px-4 md:py-3 md:px-6 text-right font-mono font-bold text-base md:text-lg">
-                                                            {product.totalQuantity} <span className="text-[10px] md:text-xs font-normal text-muted-foreground">{product.unit_label}</span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                {totals.map(product => {
+                                                    const productionNeeded = Math.max(0, product.totalQuantity - (product.stock_quantity || 0))
+                                                    return (
+                                                        <tr key={product.id} className="hover:bg-muted/5 transition-colors">
+                                                            <td className="py-2 px-3 md:py-3 md:px-6">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium text-xs md:text-sm">{product.name}</span>
+                                                                    <span className="text-[10px] md:text-xs text-muted-foreground">{product.category}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-2 px-3 md:py-3 md:px-6 text-right">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-mono font-bold text-sm md:text-base">{product.totalQuantity}</span>
+                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-2 px-3 md:py-3 md:px-6 text-right">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-mono text-sm md:text-base text-muted-foreground">{product.stock_quantity || 0}</span>
+                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-2 px-3 md:py-3 md:px-6 text-right">
+                                                                <div className="flex flex-col">
+                                                                    <span className={cn(
+                                                                        "font-mono font-bold text-sm md:text-base",
+                                                                        productionNeeded > 0 ? "text-primary" : "text-muted-foreground/50"
+                                                                    )}>
+                                                                        {productionNeeded}
+                                                                    </span>
+                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
                                             </tbody>
                                             <tfoot className="bg-muted/5">
                                                 <tr>
-                                                    <td colSpan={2} className="py-2 px-4 md:px-6 text-[9px] md:text-[10px] text-muted-foreground italic">
-                                                        Producten worden getoond in de webshop-volgorde.
+                                                    <td colSpan={4} className="py-2 px-4 md:px-6 text-[9px] md:text-[10px] text-muted-foreground italic">
+                                                        Productie = Totaal Besteld - Huidige Voorraad (minimaal 0).
                                                     </td>
                                                 </tr>
                                             </tfoot>
