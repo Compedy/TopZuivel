@@ -73,13 +73,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         }))
     }
 
-    const handleWeightChange = (itemId: string, val: number) => {
+    const handleWeightChange = (itemId: string, unitWeight: number, quantity: number) => {
         setEditingItems(prev => {
             const item = prev[itemId]
             if (!item) return prev
             return {
                 ...prev,
-                [itemId]: { ...item, totalWeight: val }
+                [itemId]: { ...item, totalWeight: unitWeight * quantity }
             }
         })
     }
@@ -311,12 +311,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                 const isCheese = item.products?.category === 'Kaas'
                                                 const editData = editingItems[item.id]
                                                 const standardWeight = item.products?.weight_per_unit || 1
-                                                const displayWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
-                                                const hasChanged = Math.abs(displayWeight - (item.quantity * standardWeight)) > 0.0001
+                                                const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
+                                                const displayWeight = totalWeight / (item.quantity || 1)
+                                                const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
                                                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
                                                 const rowTotalPrice = item.products?.is_price_per_kilo
-                                                    ? (displayWeight * item.price_snapshot)
-                                                    : ((displayWeight / (standardWeight || 1)) * item.price_snapshot)
+                                                    ? (totalWeight * item.price_snapshot)
+                                                    : ((totalWeight / (standardWeight || 1)) * item.price_snapshot)
 
                                                 return (
                                                     <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-muted/10">
@@ -329,7 +330,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </div>
                                                             <div className="text-right">
                                                                 <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
-                                                                <div className="text-[10px] text-muted-foreground">Basis: {(item.quantity * standardWeight).toFixed(3)} kg</div>
+                                                                <div className="text-[10px] text-muted-foreground">Standaard: {standardWeight.toFixed(3)} kg/st</div>
                                                             </div>
                                                         </div>
 
@@ -345,12 +346,12 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                 value={displayWeight}
                                                                                 onChange={(e) => {
                                                                                     initEditing(item)
-                                                                                    handleWeightChange(item.id, parseFloat(e.target.value))
+                                                                                    handleWeightChange(item.id, parseFloat(e.target.value), item.quantity)
                                                                                 }}
                                                                                 className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : 'border-input'}`}
                                                                             />
                                                                         </div>
-                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">kg</span>
+                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">kg/st</span>
                                                                         {item.quantity >= 1 && (
                                                                             <Button
                                                                                 variant="outline"
@@ -433,14 +434,15 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                     const isCheese = item.products?.category === 'Kaas'
                                                     const editData = editingItems[item.id]
                                                     const standardWeight = item.products?.weight_per_unit || 1
-                                                    const displayWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
-                                                    const hasChanged = Math.abs(displayWeight - (item.quantity * standardWeight)) > 0.0001
+                                                    const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
+                                                    const displayWeight = totalWeight / (item.quantity || 1)
+                                                    const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
 
                                                     const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
 
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
-                                                        ? (displayWeight * item.price_snapshot)
-                                                        : ((displayWeight / (standardWeight || 1)) * item.price_snapshot)
+                                                        ? (totalWeight * item.price_snapshot)
+                                                        : ((totalWeight / (standardWeight || 1)) * item.price_snapshot)
 
                                                     return (
                                                         <tr key={item.id} className="hover:bg-muted/10 transition-colors">
@@ -454,7 +456,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                 <div className="flex flex-col">
                                                                     <span className="font-semibold">{displayQty} {item.products?.unit_label}</span>
                                                                     <span className="text-[10px] text-muted-foreground bg-muted p-1 rounded mt-1">
-                                                                        Standaard: {(item.quantity * standardWeight).toFixed(3)} kg
+                                                                        Standaard: {standardWeight.toFixed(3)} kg/st
                                                                     </span>
                                                                 </div>
                                                             </td>
@@ -472,12 +474,12 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                             value={displayWeight}
                                                                                             onChange={(e) => {
                                                                                                 initEditing(item)
-                                                                                                handleWeightChange(item.id, parseFloat(e.target.value))
+                                                                                                handleWeightChange(item.id, parseFloat(e.target.value), item.quantity)
                                                                                             }}
                                                                                             className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : 'border-input'}`}
                                                                                         />
                                                                                     </div>
-                                                                                    <span className="text-sm font-bold text-muted-foreground uppercase">kg</span>
+                                                                                    <span className="text-sm font-bold text-muted-foreground uppercase">kg/st</span>
 
                                                                                     {item.quantity >= 1 && (
                                                                                         <Button
@@ -518,8 +520,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                         </div>
                                                                                     ))}
                                                                                     <div className="pt-2 border-t flex justify-between items-center text-xs font-bold">
-                                                                                        <span>Totaal</span>
-                                                                                        <span className={`${hasChanged ? 'text-orange-600' : ''}`}>{displayWeight.toFixed(3)} kg</span>
+                                                                                        <span>Stuks Totaal</span>
+                                                                                        <span className={`${hasChanged ? 'text-orange-600' : ''}`}>{totalWeight.toFixed(3)} kg</span>
                                                                                     </div>
                                                                                 </div>
                                                                             )}
@@ -527,7 +529,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             <div className="flex items-center gap-2">
                                                                                 {hasChanged && (
                                                                                     <span className="text-[10px] text-orange-600 font-bold">
-                                                                                        Verschil: {(((displayWeight / (item.quantity * standardWeight)) - 1) * 100).toFixed(1)}%
+                                                                                        Verschil: {(((totalWeight / (item.quantity * standardWeight)) - 1) * 100).toFixed(1)}%
                                                                                     </span>
                                                                                 )}
                                                                                 <div className="text-xs font-bold text-primary">
