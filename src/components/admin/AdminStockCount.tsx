@@ -76,7 +76,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
     const handleInputChange = (id: string, val: string) => {
         const rawVal = val.replace(',', '.')
         const num = parseFloat(rawVal) || 0
-        setProducts((prev: Product[]) => prev.map((p: Product) => {
+        setProducts((prev: Product[]) => prev.map((p: any) => {
             if (p.id === id) {
                 if (num !== initialProducts.find(ip => ip.id === id)?.stock_quantity) {
                     setModifiedIds(new Set(modifiedIds).add(id))
@@ -85,7 +85,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                     newModified.delete(id)
                     setModifiedIds(newModified)
                 }
-                return { ...p, stock_quantity: num }
+                return { ...p, stock_quantity: num, display_stock: val }
             }
             return p
         }))
@@ -214,7 +214,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                                         <Input
                                             type="text"
                                             inputMode="decimal"
-                                            value={product.stock_quantity || 0}
+                                            value={(product as any).display_stock ?? product.stock_quantity ?? 0}
                                             onChange={(e) => handleInputChange(product.id, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
                                             className="h-16 text-center text-3xl font-black border-none bg-transparent focus-visible:ring-0"

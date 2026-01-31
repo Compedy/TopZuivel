@@ -311,6 +311,48 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
     return { success: true }
 }
 
+export async function splitOrderItem(itemId: string, quantities: number[]) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    // 1. Fetch original item
+    const { data: original, error: fetchError } = await adminSupabase
+        .from('order_items')
+        .select('*')
+        .eq('id', itemId)
+        .single()
+
+    if (fetchError || !original) {
+        return { success: false, error: 'Origineel item niet gevonden' }
+    }
+
+    // 2. Delete original
+    const { error: deleteError } = await adminSupabase
+        .from('order_items')
+        .delete()
+        .eq('id', itemId)
+
+    if (deleteError) return { success: false, error: deleteError.message }
+
+    // 3. Insert new items
+    const { error: insertError } = await adminSupabase
+        .from('order_items')
+        .insert(quantities.map(qty => ({
+            order_id: original.order_id,
+            product_id: original.product_id,
+            quantity: qty,
+            price_snapshot: original.price_snapshot
+        })))
+
+    if (insertError) return { success: false, error: insertError.message }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
 export async function updateOrderStatus(orderId: string, status: string) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'

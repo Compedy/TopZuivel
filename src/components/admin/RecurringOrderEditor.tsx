@@ -42,6 +42,7 @@ export default function RecurringOrderEditor({
         }), {}) || {}
     )
     const [searchTerm, setSearchTerm] = useState('')
+    const [displayCart, setDisplayCart] = useState<Record<string, string>>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Sync state when existingOrder changes or dialog opens
@@ -50,10 +51,15 @@ export default function RecurringOrderEditor({
             setCompanyName(existingOrder?.company_name || '')
             setEmail(existingOrder?.email || '')
             setPriceModifier(existingOrder?.price_modifier?.toString() || '0')
-            setCart(existingOrder?.recurring_order_items.reduce((acc, item) => ({
+            const initialCart = existingOrder?.recurring_order_items.reduce((acc, item) => ({
                 ...acc,
                 [item.product_id]: item.quantity
-            }), {}) || {})
+            }), {}) || {}
+            setCart(initialCart)
+            setDisplayCart(Object.entries(initialCart).reduce((acc, [id, qty]) => ({
+                ...acc,
+                [id]: (qty as number).toString()
+            }), {}))
             setSearchTerm('')
         }
     }, [open, existingOrder])
@@ -67,7 +73,7 @@ export default function RecurringOrderEditor({
         )
     }, [products, searchTerm])
 
-    const handleQuantityChange = (productId: string, qty: number) => {
+    const handleQuantityChange = (productId: string, qty: number, displayVal?: string) => {
         setCart((prev: Record<string, number>) => {
             const next = { ...prev }
             if (qty <= 0) delete next[productId]
@@ -219,10 +225,10 @@ export default function RecurringOrderEditor({
                                                         type="text"
                                                         inputMode="decimal"
                                                         className="w-16 h-8 text-xs text-right"
-                                                        value={qty}
+                                                        value={displayCart[pid] ?? qty.toString()}
                                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                             const val = parseFloat(e.target.value.replace(',', '.'))
-                                                            handleQuantityChange(pid, isNaN(val) ? 0 : val)
+                                                            handleQuantityChange(pid, isNaN(val) ? 0 : val, e.target.value)
                                                         }}
                                                     />
                                                     <Button
