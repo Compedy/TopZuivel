@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Minus, Search, Save, Loader2, PackageOpen, LayoutGrid, CheckCircle } from 'lucide-react'
 import { updateStockLevels } from '@/app/admin/actions'
 import { cn } from '@/lib/utils'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AlertCircle } from 'lucide-react'
 
 interface AdminStockCountProps {
     initialProducts: Product[]
@@ -20,6 +22,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
     const [search, setSearch] = useState('')
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
+    const [countMode, setCountMode] = useState<'edit' | 'fresh'>('edit')
 
     const categories = useMemo(() => {
         const cats = Array.from(new Set(initialProducts.map((p: Product) => p.category)))
@@ -49,6 +52,25 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
             }
             return p
         }))
+    }
+
+    const switchMode = (newMode: 'edit' | 'fresh') => {
+        if (newMode === countMode) return
+
+        if (modifiedIds.size > 0) {
+            if (!confirm('Je hebt onopgeslagen wijzigingen. Weet je zeker dat je van modus wilt wisselen? Je wijzigingen gaan verloren.')) {
+                return
+            }
+        }
+
+        setCountMode(newMode)
+        if (newMode === 'fresh') {
+            setProducts(products.map(p => ({ ...p, stock_quantity: 0 })))
+            setModifiedIds(new Set(products.map(p => p.id)))
+        } else {
+            setProducts(initialProducts)
+            setModifiedIds(new Set())
+        }
     }
 
     const handleInputChange = (id: string, val: string) => {
@@ -100,6 +122,19 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
+                    </div>
+
+                    <div className="flex-1 flex justify-center">
+                        <Tabs value={countMode} onValueChange={(val) => switchMode(val as 'edit' | 'fresh')}>
+                            <TabsList className="h-12 p-1 bg-muted/80">
+                                <TabsTrigger value="edit" className="px-6 text-base font-semibold">
+                                    Huidige aanpassen
+                                </TabsTrigger>
+                                <TabsTrigger value="fresh" className="px-6 text-base font-semibold">
+                                    Nieuwe telling
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
                     </div>
 
                     <div className="flex items-center gap-2 w-full md:w-auto">
