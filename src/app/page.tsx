@@ -1,6 +1,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import ShopInterface from '@/components/ShopInterface'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Info } from 'lucide-react'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -27,7 +30,12 @@ export default async function Home() {
         </div>
         <h1 className="text-lg font-bold text-primary-foreground md:text-xl">Top Zuivel Bestellen</h1>
         <div className="ml-auto flex items-center gap-4">
-          {/* Public access, no user info or logout needed */}
+          <Button asChild variant="secondary" size="sm" className="gap-2">
+            <Link href="/contact">
+              <Info className="h-4 w-4" />
+              <span>Contact</span>
+            </Link>
+          </Button>
         </div>
       </header>
       <main className="container mx-auto p-4 max-w-4xl">
