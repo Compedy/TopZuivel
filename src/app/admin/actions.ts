@@ -184,7 +184,7 @@ export async function convertRecurringOrdersToReal() {
                 company_name: template.company_name,
                 email: template.email,
                 week_number: weekData.weekNumber,
-                status: 'pending'
+                status: 'open'
             })
             .select()
             .single()
@@ -220,6 +220,73 @@ export async function convertRecurringOrdersToReal() {
 
     revalidatePath('/admin')
     return { success: true, results }
+}
+
+export async function convertSingleRecurringOrderToReal(templateId: string) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    // 1. Fetch the specific recurring order template
+    const { data: template, error: fetchError } = await adminSupabase
+        .from('recurring_orders')
+        .select('*, recurring_order_items(*)')
+        .eq('id', templateId)
+        .single()
+
+    if (fetchError || !template) {
+        return { success: false, error: fetchError?.message || 'Template not found' }
+    }
+
+    // 2. Fetch current product prices
+    const { data: products } = await adminSupabase.from('products').select('id, price')
+    const priceMap = new Map((products as any[])?.map((p: any) => [p.id, p.price]))
+
+    const weekData = getCustomWeekData(new Date())
+
+    // 3. Create Order
+    const { data: order, error: orderError } = await adminSupabase
+        .from('orders')
+        .insert({
+            company_name: template.company_name,
+            email: template.email,
+            week_number: weekData.weekNumber,
+            status: 'open'
+        })
+        .select()
+        .single()
+
+    if (orderError) {
+        return { success: false, error: orderError.message }
+    }
+
+    // 4. Create Items with price modifiers
+    const itemsToInsert = template.recurring_order_items.map((item: any) => {
+        const basePrice = (priceMap.get(item.product_id) as number) || 0
+        const modifier = Number(template.price_modifier) || 0
+        // Apply percentage modifier: basePrice * (1 + modifier / 100)
+        const finalPrice = basePrice * (1 + modifier / 100)
+
+        return {
+            order_id: order.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price_snapshot: Number(finalPrice.toFixed(2))
+        }
+    })
+
+    const { error: itemsError } = await adminSupabase.from('order_items').insert(itemsToInsert)
+
+    if (itemsError) {
+        // Cleanup order if items fail
+        await adminSupabase.from('orders').delete().eq('id', order.id)
+        return { success: false, error: itemsError.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
 }
 
 export async function updateOrderItemQuantity(itemId: string, newQuantity: number) {

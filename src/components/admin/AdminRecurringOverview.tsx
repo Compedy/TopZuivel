@@ -10,6 +10,7 @@ import {
     getRecurringOrders,
     deleteRecurringOrder,
     convertRecurringOrdersToReal,
+    convertSingleRecurringOrderToReal,
     upsertRecurringOrder
 } from '@/app/admin/actions'
 import { Plus, Edit2, Trash2, Play, AlertCircle, CheckCircle2 } from 'lucide-react'
@@ -33,6 +34,7 @@ export default function AdminRecurringOverview({ products }: AdminRecurringOverv
     const [isEditorOpen, setIsEditorOpen] = useState(false)
     const [editingOrder, setEditingOrder] = useState<RecurringOrderWithItems | undefined>()
     const [conversionStatus, setConversionStatus] = useState<{ success?: boolean, msg?: string } | null>(null)
+    const [runningId, setRunningId] = useState<string | null>(null)
 
     const fetchOrders = useCallback(async () => {
         setIsLoading(true)
@@ -63,9 +65,25 @@ export default function AdminRecurringOverview({ products }: AdminRecurringOverv
 
     const handleRunConversion = async () => {
         if (confirm('Wilt u nu alle actieve periodieke bestellingen omzetten naar echte bestellingen voor deze week?')) {
+            setIsLoading(true)
             const res = await convertRecurringOrdersToReal()
+            setIsLoading(false)
             if (res.success) {
                 setConversionStatus({ success: true, msg: `Succesvol voltooid. ${res.results?.filter(r => r.success).length} bestellingen aangemaakt.` })
+            } else {
+                setConversionStatus({ success: false, msg: 'Fout bij omzetten: ' + res.error })
+            }
+            setTimeout(() => setConversionStatus(null), 5000)
+        }
+    }
+
+    const handleRunSingleConversion = async (order: RecurringOrderWithItems) => {
+        if (confirm(`Wilt u de periodieke bestelling voor ${order.company_name} nu omzetten naar een echte bestelling voor deze week?`)) {
+            setRunningId(order.id)
+            const res = await convertSingleRecurringOrderToReal(order.id)
+            setRunningId(null)
+            if (res.success) {
+                setConversionStatus({ success: true, msg: `Bestelling voor ${order.company_name} succesvol aangemaakt.` })
             } else {
                 setConversionStatus({ success: false, msg: 'Fout bij omzetten: ' + res.error })
             }
@@ -122,6 +140,16 @@ export default function AdminRecurringOverview({ products }: AdminRecurringOverv
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        disabled={runningId === order.id || !order.is_active}
+                                        onClick={() => handleRunSingleConversion(order)}
+                                        title="Nu uitvoeren voor deze klant"
+                                    >
+                                        <Play className={cn("h-4 w-4", runningId === order.id && "animate-pulse")} />
+                                    </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"
