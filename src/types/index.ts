@@ -28,11 +28,11 @@ export interface Database {
                     id?: string
                     name: string
                     category: string
-                    type_group: string
+                    type_group?: string | null
                     price: number
                     unit_label: string
                     is_price_per_kilo?: boolean
-                    weight_per_unit: number
+                    weight_per_unit?: number | null
                     is_active?: boolean
                     sort_order?: number | null
                     stock_quantity?: number

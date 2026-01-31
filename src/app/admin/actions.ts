@@ -47,6 +47,8 @@ export async function addProduct(product: ProductInsert) {
         .from('products')
         .insert({
             ...product,
+            type_group: product.type_group || 'Algemeen',
+            weight_per_unit: product.weight_per_unit || 0,
             is_active: product.is_active ?? true,
             sort_order: product.sort_order ?? 999 // Default to end of list
         })

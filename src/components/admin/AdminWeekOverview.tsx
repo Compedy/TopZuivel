@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Product, OrderWithItems } from '@/types'
+import { Product, OrderWithItems, OrderItem } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getCustomWeekData, groupOrdersByWeek } from '@/lib/date-utils'
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -12,6 +12,8 @@ interface AdminWeekOverviewProps {
     products: Product[]
     orders: OrderWithItems[]
 }
+
+type SummedProduct = Product & { totalQuantity: number }
 
 export default function AdminWeekOverview({ products, orders }: AdminWeekOverviewProps) {
     const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({})
@@ -45,8 +47,6 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             }
         }
 
-
-
         return groups
     }, [orders])
 
@@ -70,11 +70,11 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
         }))
     }
 
-    const calculateTotals = (weekOrders: OrderWithItems[]) => {
+    const calculateTotals = (weekOrders: OrderWithItems[]): SummedProduct[] => {
         const totals: Record<string, number> = {}
 
         weekOrders.forEach(order => {
-            order.order_items?.forEach((item) => {
+            order.order_items?.forEach((item: OrderItem) => {
                 const productId = item.product_id
                 if (productId) {
                     totals[productId] = (totals[productId] || 0) + item.quantity
@@ -82,7 +82,6 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             })
         })
 
-        // Map to products and filter out 0 quantity
         return products
             .filter(p => totals[p.id] && totals[p.id] > 0)
             .map(p => ({
@@ -93,7 +92,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
 
     return (
         <div className="space-y-4">
-            {weekGroups.map((group, index) => {
+            {weekGroups.map((group: { weekData: any, orders: OrderWithItems[] }, index: number) => {
                 const key = `${group.weekData.year}-W${group.weekData.weekNumber}`
                 const isExpanded = !!expandedWeeks[key]
                 const totals = calculateTotals(group.orders)
@@ -133,61 +132,83 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-muted/20 text-muted-foreground border-b">
-                                                <tr>
-                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-left font-semibold text-xs md:text-sm">Product</th>
-                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Totaal</th>
-                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Voorraad</th>
-                                                    <th className="py-2 px-3 md:py-2.5 md:px-6 text-right font-semibold text-xs md:text-sm">Productie</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y">
-                                                {totals.map(product => {
-                                                    const productionNeeded = Math.max(0, product.totalQuantity - (product.stock_quantity || 0))
-                                                    return (
-                                                        <tr key={product.id} className="hover:bg-muted/5 transition-colors">
-                                                            <td className="py-2 px-3 md:py-3 md:px-6">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium text-xs md:text-sm">{product.name}</span>
-                                                                    <span className="text-[10px] md:text-xs text-muted-foreground">{product.category}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-2 px-3 md:py-3 md:px-6 text-right">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-mono font-bold text-sm md:text-base">{product.totalQuantity}</span>
-                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-2 px-3 md:py-3 md:px-6 text-right">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-mono text-sm md:text-base text-muted-foreground">{product.stock_quantity || 0}</span>
-                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-2 px-3 md:py-3 md:px-6 text-right">
-                                                                <div className="flex flex-col">
-                                                                    <span className={cn(
-                                                                        "font-mono font-bold text-sm md:text-base",
-                                                                        productionNeeded > 0 ? "text-primary" : "text-muted-foreground/50"
-                                                                    )}>
-                                                                        {productionNeeded}
-                                                                    </span>
-                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })}
-                                            </tbody>
-                                            <tfoot className="bg-muted/5">
-                                                <tr>
-                                                    <td colSpan={4} className="py-2 px-4 md:px-6 text-[9px] md:text-[10px] text-muted-foreground italic">
-                                                        Productie = Totaal Besteld - Huidige Voorraad (minimaal 0).
-                                                    </td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
+                                        {(() => {
+                                            const regularCheese = totals.filter(t => t.category === 'Kaas' && !t.name.toLowerCase().includes('gevacumeerd'))
+                                            const prepackedCheese = totals.filter(t => t.category === 'Kaas' && t.name.toLowerCase().includes('gevacumeerd'))
+                                            const zuivel = totals.filter(t => t.category === 'Zuivel')
+
+                                            const sections = [
+                                                { title: 'Reguliere Kaas', items: regularCheese },
+                                                { title: 'Gevacumeerde Kaas', items: prepackedCheese },
+                                                { title: 'Zuivel', items: zuivel }
+                                            ]
+
+                                            return sections.map((section: { title: string, items: SummedProduct[] }, sIndex: number) => {
+                                                if (section.items.length === 0) return null
+
+                                                return (
+                                                    <div key={section.title} className={cn(sIndex > 0 ? "mt-4" : "")}>
+                                                        <div className="bg-muted/40 px-4 py-1.5 md:px-6 md:py-2 flex items-center justify-between border-y">
+                                                            <h4 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">{section.title}</h4>
+                                                            <span className="text-[9px] md:text-[10px] bg-background px-1.5 py-0.5 rounded border shadow-sm">
+                                                                {section.items.length} {section.items.length === 1 ? 'item' : 'items'}
+                                                            </span>
+                                                        </div>
+                                                        <table className="w-full text-sm">
+                                                            <thead className="text-muted-foreground border-b text-[10px] md:text-xs uppercase">
+                                                                <tr className="bg-background">
+                                                                    <th className="py-2 px-4 md:py-2 md:px-6 text-left font-bold">Product</th>
+                                                                    <th className="py-2 px-4 md:py-2 md:px-6 text-right font-bold w-[70px] md:w-[100px]">Totaal</th>
+                                                                    <th className="py-2 px-4 md:py-2 md:px-6 text-right font-bold w-[70px] md:w-[100px]">Vorraad</th>
+                                                                    <th className="py-2 px-4 md:py-2 md:px-6 text-right font-bold w-[70px] md:w-[100px]">Productie</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y">
+                                                                {section.items.map((product) => {
+                                                                    const productionNeeded = Math.max(0, product.totalQuantity - (product.stock_quantity || 0))
+                                                                    return (
+                                                                        <tr key={product.id} className="hover:bg-muted/30 transition-colors">
+                                                                            <td className="py-2 px-4 md:py-2.5 md:px-6">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-semibold text-xs md:text-sm text-foreground">{product.name}</span>
+                                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.type_group}</span>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="py-2 px-4 md:py-2.5 md:px-6 text-right">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-mono font-bold text-sm md:text-lg">{product.totalQuantity}</span>
+                                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="py-2 px-4 md:py-2.5 md:px-6 text-right">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-mono text-xs md:text-sm text-muted-foreground/70">{product.stock_quantity || 0}</span>
+                                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground/50">{product.unit_label}</span>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="py-2 px-4 md:py-2.5 md:px-6 text-right bg-primary/5">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className={cn(
+                                                                                        "font-mono font-black text-sm md:text-lg",
+                                                                                        productionNeeded > 0 ? "text-primary" : "text-muted-foreground/30"
+                                                                                    )}>
+                                                                                        {productionNeeded}
+                                                                                    </span>
+                                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )
+                                            })
+                                        })()}
+                                        <div className="bg-muted/5 p-2 px-4 md:px-6 text-[9px] md:text-[10px] text-muted-foreground italic border-t">
+                                            Productie = Totaal Besteld - Huidige Voorraad (minimaal 0). Producten worden getoond in webshop-volgorde.
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>

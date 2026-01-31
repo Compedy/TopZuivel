@@ -84,7 +84,6 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                     <Label htmlFor="type_group">Type Groep</Label>
                     <Input
                         id="type_group"
-                        required
                         value={formData.type_group}
                         onChange={e => setFormData({ ...formData, type_group: e.target.value })}
                         placeholder="Bijv. Goudse Kaas"
@@ -121,7 +120,6 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                         id="weight_per_unit"
                         type="number"
                         step="0.001"
-                        required
                         value={formData.weight_per_unit}
                         onChange={e => setFormData({ ...formData, weight_per_unit: e.target.value })}
                     />
