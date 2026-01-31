@@ -338,7 +338,9 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </div>
                                                             <div className="text-right">
                                                                 <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
-                                                                <div className="text-[10px] text-muted-foreground">Standaard: {standardWeight.toFixed(3)} kg/st</div>
+                                                                {isCheese && (
+                                                                    <div className="text-[10px] text-muted-foreground">Standaard: {standardWeight.toFixed(3)} kg/st</div>
+                                                                )}
                                                             </div>
                                                         </div>
 
@@ -463,9 +465,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             <td className="py-4 px-4 text-center">
                                                                 <div className="flex flex-col">
                                                                     <span className="font-semibold">{displayQty} {item.products?.unit_label}</span>
-                                                                    <span className="text-[10px] text-muted-foreground bg-muted p-1 rounded mt-1">
-                                                                        Standaard: {standardWeight.toFixed(3)} kg/st
-                                                                    </span>
+                                                                    {isCheese && (
+                                                                        <span className="text-[10px] text-muted-foreground bg-muted p-1 rounded mt-1">
+                                                                            Standaard: {standardWeight.toFixed(3)} kg/st
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             <td className="py-4 px-4 text-right">
