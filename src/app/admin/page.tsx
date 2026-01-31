@@ -47,7 +47,11 @@ export default async function AdminPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center border-b border-border bg-card px-3 md:px-4 shadow-sm">
+            <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center border-b border-border bg-card px-3 md:px-4 shadow-sm gap-2">
+                <div className="bg-white p-1 rounded-sm border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.png" alt="Top Zuivel" className="h-8 md:h-10 w-auto object-contain" />
+                </div>
                 <h1 className="text-sm md:text-xl font-bold text-foreground flex-shrink-1 truncate mr-2">
                     <span className="hidden sm:inline">Top Zuivel </span>Backoffice
                 </h1>

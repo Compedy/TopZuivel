@@ -20,7 +20,11 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-primary px-4 shadow-sm">
+      <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-primary px-4 shadow-sm gap-3">
+        <div className="bg-white p-1 rounded-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Top Zuivel" className="h-10 w-auto object-contain" />
+        </div>
         <h1 className="text-lg font-bold text-primary-foreground md:text-xl">Top Zuivel Bestellen</h1>
         <div className="ml-auto flex items-center gap-4">
           {/* Public access, no user info or logout needed */}

@@ -231,9 +231,17 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
     }
 
     const completeOrder = async (order: OrderWithItems) => {
-        // First check if there are unsaved changes
-        if (Object.keys(editingItems).length > 0) {
-            if (!confirm('Er zijn nog niet-opgeslagen wijzigingen. Wilt u doorgaan en deze negeren?')) {
+        // First check if there are unsaved changes IN THIS ORDER
+        const hasUnsavedChanges = order.order_items.some(item => {
+            const editData = editingItems[item.id]
+            if (!editData) return false
+            const standardWeight = item.products?.weight_per_unit || 1
+            const currentTotalWeight = item.quantity * standardWeight
+            return Math.abs(editData.totalWeight - currentTotalWeight) > 0.0001
+        })
+
+        if (hasUnsavedChanges) {
+            if (!confirm('Er zijn nog niet-opgeslagen wijzigingen in deze bestelling. Wilt u doorgaan en deze negeren?')) {
                 return
             }
         }
@@ -290,8 +298,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
                                         <span className="font-bold text-lg">{order.company_name || 'Onbekende Klant'}</span>
-                                        <Badge variant={isCompleted ? 'outline' : order.status === 'pending' ? 'default' : 'secondary'} className={`text-[10px] uppercase ${isCompleted ? 'bg-green-100 text-green-700 border-green-200' : ''}`}>
-                                            {order.status === 'completed' ? 'voldaan' : order.status}
+                                        <Badge variant={isCompleted ? 'outline' : (order.status === 'open' || order.status === 'pending') ? 'default' : 'secondary'} className={`text-[10px] uppercase ${isCompleted ? 'bg-green-100 text-green-700 border-green-200' : ''}`}>
+                                            {order.status === 'completed' ? 'voldaan' : order.status === 'pending' ? 'open' : order.status}
                                         </Badge>
                                     </div>
                                     <span className="text-xs text-muted-foreground">{order.email}</span>
