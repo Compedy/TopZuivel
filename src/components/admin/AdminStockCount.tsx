@@ -74,7 +74,8 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
     }
 
     const handleInputChange = (id: string, val: string) => {
-        const num = parseInt(val) || 0
+        const rawVal = val.replace(',', '.')
+        const num = parseFloat(rawVal) || 0
         setProducts((prev: Product[]) => prev.map((p: Product) => {
             if (p.id === id) {
                 if (num !== initialProducts.find(ip => ip.id === id)?.stock_quantity) {
@@ -211,7 +212,8 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
 
                                     <div className="flex flex-col items-center flex-1">
                                         <Input
-                                            type="number"
+                                            type="text"
+                                            inputMode="decimal"
                                             value={product.stock_quantity || 0}
                                             onChange={(e) => handleInputChange(product.id, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}

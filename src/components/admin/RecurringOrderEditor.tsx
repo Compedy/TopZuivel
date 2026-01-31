@@ -98,7 +98,7 @@ export default function RecurringOrderEditor({
                 id: existingOrder?.id,
                 company_name: companyName,
                 email: email,
-                price_modifier: parseFloat(priceModifier) || 0,
+                price_modifier: parseFloat(priceModifier.replace(',', '.')) || 0,
                 is_active: existingOrder?.is_active ?? true
             },
             items
@@ -148,10 +148,13 @@ export default function RecurringOrderEditor({
                             </Label>
                             <Input
                                 id="modifier"
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={priceModifier}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPriceModifier(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    const rawVal = e.target.value.replace(',', '.')
+                                    setPriceModifier(rawVal)
+                                }}
                                 placeholder="Bijv. -10 voor korting, 5 voor premium"
                             />
                             <p className="text-[10px] text-muted-foreground">Positief = duurder, Negatief = goedkoper</p>
@@ -213,10 +216,14 @@ export default function RecurringOrderEditor({
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Input
-                                                        type="number"
+                                                        type="text"
+                                                        inputMode="decimal"
                                                         className="w-16 h-8 text-xs text-right"
                                                         value={qty}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleQuantityChange(pid, parseFloat(e.target.value) || 0)}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                            const val = parseFloat(e.target.value.replace(',', '.'))
+                                                            handleQuantityChange(pid, isNaN(val) ? 0 : val)
+                                                        }}
                                                     />
                                                     <Button
                                                         size="sm"

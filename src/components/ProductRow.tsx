@@ -18,7 +18,8 @@ export default function ProductRow({ product, quantity, onQuantityChange }: Prod
     const handleDecrement = () => onQuantityChange(product.id, Math.max(0, quantity - 1))
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseInt(e.target.value)
+        const rawVal = e.target.value.replace(',', '.')
+        const val = parseFloat(rawVal)
         if (!isNaN(val) && val >= 0) {
             onQuantityChange(product.id, val)
         }
@@ -65,8 +66,8 @@ export default function ProductRow({ product, quantity, onQuantityChange }: Prod
                         <Minus className="h-4 w-4" />
                     </Button>
                     <Input
-                        type="number"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         value={quantity}
                         onChange={handleInputChange}
                         className="h-8 w-16 text-center"

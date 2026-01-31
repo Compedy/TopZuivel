@@ -351,12 +351,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                         <div className="relative flex-1">
                                                                             <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                                             <Input
-                                                                                type="number"
-                                                                                step="0.001"
+                                                                                type="text"
+                                                                                inputMode="decimal"
                                                                                 value={displayWeight}
                                                                                 onChange={(e) => {
                                                                                     initEditing(item)
-                                                                                    handleWeightChange(item.id, parseFloat(e.target.value), item.quantity)
+                                                                                    const val = parseFloat(e.target.value.replace(',', '.'))
+                                                                                    handleWeightChange(item.id, isNaN(val) ? 0 : val, item.quantity)
                                                                                 }}
                                                                                 className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : 'border-input'}`}
                                                                             />
@@ -386,10 +387,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             <div key={idx} className="flex items-center gap-2">
                                                                                 <span className="text-[10px] w-4 text-muted-foreground">#{idx + 1}</span>
                                                                                 <Input
-                                                                                    type="number"
-                                                                                    step="0.001"
+                                                                                    type="text"
+                                                                                    inputMode="decimal"
                                                                                     value={unitWeight}
-                                                                                    onChange={(e) => handleUnitWeightChange(item.id, idx, parseFloat(e.target.value))}
+                                                                                    onChange={(e) => {
+                                                                                        const val = parseFloat(e.target.value.replace(',', '.'))
+                                                                                        handleUnitWeightChange(item.id, idx, isNaN(val) ? 0 : val)
+                                                                                    }}
                                                                                     className="w-full h-8 text-right text-xs"
                                                                                 />
                                                                             </div>
@@ -481,12 +485,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                     <div className="relative group">
                                                                                         <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                                                                         <Input
-                                                                                            type="number"
-                                                                                            step="0.001"
+                                                                                            type="text"
+                                                                                            inputMode="decimal"
                                                                                             value={displayWeight}
                                                                                             onChange={(e) => {
                                                                                                 initEditing(item)
-                                                                                                handleWeightChange(item.id, parseFloat(e.target.value), item.quantity)
+                                                                                                const val = parseFloat(e.target.value.replace(',', '.'))
+                                                                                                handleWeightChange(item.id, isNaN(val) ? 0 : val, item.quantity)
                                                                                             }}
                                                                                             className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : 'border-input'}`}
                                                                                         />
