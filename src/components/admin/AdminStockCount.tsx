@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Minus, Search, Save, Loader2, PackageOpen, LayoutGrid, CheckCircle } from 'lucide-react'
 import { updateStockLevels } from '@/app/admin/actions'
+import { cn } from '@/lib/utils'
 
 interface AdminStockCountProps {
     initialProducts: Product[]
@@ -21,20 +22,20 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
     const [saving, setSaving] = useState(false)
 
     const categories = useMemo(() => {
-        const cats = Array.from(new Set(initialProducts.map(p => p.category)))
+        const cats = Array.from(new Set(initialProducts.map((p: Product) => p.category)))
         return cats.sort()
     }, [initialProducts])
 
     const filteredProducts = useMemo(() => {
-        return products.filter(p => {
+        return products.filter((p: Product) => {
             const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
             const matchesCategory = !activeCategory || p.category === activeCategory
             return matchesSearch && matchesCategory
-        }).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        }).sort((a: Product, b: Product) => (a.sort_order || 0) - (b.sort_order || 0))
     }, [products, search, activeCategory])
 
     const updateStock = (id: string, delta: number) => {
-        setProducts(prev => prev.map(p => {
+        setProducts((prev: Product[]) => prev.map((p: Product) => {
             if (p.id === id) {
                 const newStock = Math.max(0, (p.stock_quantity || 0) + delta)
                 if (newStock !== initialProducts.find(ip => ip.id === id)?.stock_quantity) {
@@ -52,7 +53,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
 
     const handleInputChange = (id: string, val: string) => {
         const num = parseInt(val) || 0
-        setProducts(prev => prev.map(p => {
+        setProducts((prev: Product[]) => prev.map((p: Product) => {
             if (p.id === id) {
                 if (num !== initialProducts.find(ip => ip.id === id)?.stock_quantity) {
                     setModifiedIds(new Set(modifiedIds).add(id))
@@ -71,8 +72,8 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
         if (modifiedIds.size === 0) return
 
         setSaving(true)
-        const updates = Array.from(modifiedIds).map(id => {
-            const prod = products.find(p => p.id === id)
+        const updates = (Array.from(modifiedIds) as string[]).map((id: string) => {
+            const prod = products.find((p: Product) => p.id === id)
             return { id, stock_quantity: prod?.stock_quantity || 0 }
         })
 
@@ -124,7 +125,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                         <LayoutGrid className="h-4 w-4 mr-2" />
                         Alle
                     </Button>
-                    {categories.map(cat => (
+                    {categories.map((cat: string) => (
                         <Button
                             key={cat}
                             variant={activeCategory === cat ? 'default' : 'outline'}
@@ -140,10 +141,17 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
 
             {/* Product List - Tablet Optimized */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProducts.map(product => {
+                {filteredProducts.map((product: Product) => {
                     const isModified = modifiedIds.has(product.id)
                     return (
-                        <Card key={product.id} className={`transition-all duration-200 ${isModified ? 'ring-2 ring-primary border-primary shadow-lg bg-primary/5' : 'hover:shadow-md'}`}>
+                        <Card
+                            key={product.id}
+                            className={cn(
+                                "transition-all duration-200 cursor-pointer select-none",
+                                isModified ? "ring-2 ring-primary border-primary shadow-lg bg-primary/5" : "hover:shadow-md"
+                            )}
+                            onClick={() => updateStock(product.id, 1)}
+                        >
                             <CardContent className="p-4">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex flex-col gap-1">
@@ -158,7 +166,10 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                                         variant="outline"
                                         size="icon"
                                         className="h-16 w-16 rounded-2xl border-2 hover:bg-destructive hover:text-white transition-colors"
-                                        onClick={() => updateStock(product.id, -1)}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            updateStock(product.id, -1)
+                                        }}
                                     >
                                         <Minus className="h-8 w-8" />
                                     </Button>
@@ -168,6 +179,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                                             type="number"
                                             value={product.stock_quantity || 0}
                                             onChange={(e) => handleInputChange(product.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
                                             className="h-16 text-center text-3xl font-black border-none bg-transparent focus-visible:ring-0"
                                         />
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold">{product.unit_label}</span>
@@ -177,7 +189,12 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                                         variant="outline"
                                         size="icon"
                                         className="h-16 w-16 rounded-2xl border-2 hover:bg-green-600 hover:text-white transition-colors"
-                                        onClick={() => updateStock(product.id, 1)}
+                                        onClick={(e) => {
+                                            // Propagation will bubble to Card and trigger +1, 
+                                            // but to be explicit and avoid double triggering in case of future changes:
+                                            e.stopPropagation()
+                                            updateStock(product.id, 1)
+                                        }}
                                     >
                                         <Plus className="h-8 w-8" />
                                     </Button>
