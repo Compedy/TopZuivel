@@ -66,6 +66,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
 
         const standardWeight = item.products?.weight_per_unit || 1
         const totalWeight = item.quantity * standardWeight
+        const unitLabel = item.products?.unit_label?.toLowerCase() || ''
+        const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
 
         const unitCount = Math.max(1, Math.ceil(item.quantity))
         const units = Array(unitCount).fill(standardWeight)
@@ -75,11 +77,15 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             units[unitCount - 1] = Math.max(0, totalWeight - sumOfOthers)
         }
 
+        const displayTotalWeight = isPieceBased
+            ? (totalWeight / (item.quantity || 1)).toString()
+            : totalWeight.toString()
+
         setEditingItems(prev => ({
             ...prev,
             [item.id]: {
                 totalWeight: totalWeight,
-                displayTotalWeight: (totalWeight / (item.quantity || 1)).toString(),
+                displayTotalWeight: displayTotalWeight,
                 units: units,
                 displayUnits: units.map(u => u.toString()),
                 isExpanded: false
@@ -138,12 +144,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         })
     }
 
-    const saveWeight = async (itemId: string, standardWeight: number) => {
+    const saveWeight = async (itemId: string, standardWeight: number, unitLabel?: string) => {
         const editData = editingItems[itemId]
         if (!editData) return
 
         setSaving(itemId)
 
+        const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel?.toLowerCase() || '')
         let result;
         if (editData.isExpanded) {
             // Persist as separate records
@@ -151,7 +158,9 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             result = await splitOrderItem(itemId, quantities)
         } else {
             // Standard update
-            const newQuantity = editData.totalWeight / (standardWeight || 1)
+            const newQuantity = isPieceBased
+                ? editData.totalWeight / (standardWeight || 1)
+                : editData.totalWeight
             result = await updateOrderItemQuantity(itemId, newQuantity)
         }
 
@@ -354,11 +363,15 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                         <div className="md:hidden space-y-4 p-4">
                                             {order.order_items.map((item) => {
                                                 const isCheese = item.products?.category === 'Kaas'
+                                                const unitLabel = item.products?.unit_label?.toLowerCase() || ''
+                                                const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
+                                                const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo)
+
                                                 const editData = editingItems[item.id]
                                                 const standardWeight = item.products?.weight_per_unit || 1
                                                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
                                                 const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
-                                                const displayWeight = totalWeight / (displayQty || 1)
+                                                const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
                                                 const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
                                                 const rowTotalPrice = item.products?.is_price_per_kilo
                                                     ? (totalWeight * item.price_snapshot)
@@ -381,7 +394,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </div>
                                                         </div>
 
-                                                        {isCheese && !isCompleted ? (
+                                                        {isWeightAdjustable ? (
                                                             <div className="space-y-2">
                                                                 {!editData?.isExpanded ? (
                                                                     <div className="flex items-center gap-2">
@@ -393,13 +406,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                 value={editData?.displayTotalWeight || displayWeight.toString()}
                                                                                 onChange={(e) => {
                                                                                     initEditing(item)
-                                                                                    handleWeightChange(item.id, e.target.value, item.quantity)
+                                                                                    handleWeightChange(item.id, e.target.value, isPieceBased ? displayQty : 1)
                                                                                 }}
                                                                                 className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : 'border-input'}`}
                                                                             />
                                                                         </div>
-                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">kg/st</span>
-                                                                        {item.quantity >= 1 && (
+                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
+                                                                        {isPieceBased && item.quantity >= 1 && (
                                                                             <Button
                                                                                 variant="outline"
                                                                                 size="icon"
@@ -439,7 +452,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                         <Button
                                                                             size="sm"
                                                                             disabled={!editData || saving === item.id || !hasChanged}
-                                                                            onClick={() => saveWeight(item.id, standardWeight)}
+                                                                            onClick={() => saveWeight(item.id, standardWeight, item.products?.unit_label)}
                                                                             className="h-8 px-4"
                                                                         >
                                                                             {saving === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
@@ -479,11 +492,15 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                             <tbody className="divide-y">
                                                 {order.order_items.map((item) => {
                                                     const isCheese = item.products?.category === 'Kaas'
+                                                    const unitLabel = item.products?.unit_label?.toLowerCase() || ''
+                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
+                                                    const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo)
+
                                                     const editData = editingItems[item.id]
                                                     const standardWeight = item.products?.weight_per_unit || 1
                                                     const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
                                                     const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
-                                                    const displayWeight = totalWeight / (displayQty || 1)
+                                                    const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
                                                     const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
 
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
@@ -510,7 +527,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </td>
                                                             <td className="py-4 px-4 text-right">
                                                                 <div className="flex flex-col items-end gap-2">
-                                                                    {isCheese && !isCompleted ? (
+                                                                    {isWeightAdjustable ? (
                                                                         <div className="flex flex-col items-end gap-1">
                                                                             {!editData?.isExpanded ? (
                                                                                 <div className="flex items-center gap-2">
@@ -522,14 +539,14 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                             value={editData?.displayTotalWeight || displayWeight.toString()}
                                                                                             onChange={(e) => {
                                                                                                 initEditing(item)
-                                                                                                handleWeightChange(item.id, e.target.value, item.quantity)
+                                                                                                handleWeightChange(item.id, e.target.value, isPieceBased ? displayQty : 1)
                                                                                             }}
                                                                                             className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : 'border-input'}`}
                                                                                         />
                                                                                     </div>
-                                                                                    <span className="text-sm font-bold text-muted-foreground uppercase">kg/st</span>
+                                                                                    <span className="text-sm font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
 
-                                                                                    {item.quantity >= 1 && (
+                                                                                    {isPieceBased && item.quantity >= 1 && (
                                                                                         <Button
                                                                                             variant="ghost"
                                                                                             size="icon"
@@ -602,7 +619,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             size="sm"
                                                                             className="h-8 w-full gap-1"
                                                                             disabled={!editData || saving === item.id || !hasChanged}
-                                                                            onClick={() => saveWeight(item.id, standardWeight)}
+                                                                            onClick={() => saveWeight(item.id, standardWeight, item.products?.unit_label)}
                                                                         >
                                                                             {saving === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                                                                             Opslaan

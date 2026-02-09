@@ -58,15 +58,26 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
         if (newMode === countMode) return
 
         if (modifiedIds.size > 0) {
-            if (!confirm('Je hebt onopgeslagen wijzigingen. Weet je zeker dat je van modus wilt wisselen? Je wijzigingen gaan verloren.')) {
-                return
-            }
+            // Use a slight delay to allow the UI to settle before the blocking confirm()
+            // This can prevent some loop behaviors in controlled components
+            setTimeout(() => {
+                if (window.confirm('Je hebt onopgeslagen wijzigingen. Weet je zeker dat je van modus wilt wisselen? Je wijzigingen gaan verloren.')) {
+                    setCountMode(newMode)
+                    if (newMode === 'fresh') {
+                        setProducts(products.map(p => ({ ...p, stock_quantity: 0 })))
+                        setModifiedIds(new Set())
+                    } else {
+                        setProducts(initialProducts)
+                        setModifiedIds(new Set())
+                    }
+                }
+            }, 0)
+            return
         }
 
         setCountMode(newMode)
         if (newMode === 'fresh') {
             setProducts(products.map(p => ({ ...p, stock_quantity: 0 })))
-            // Don't auto-fill modifiedIds anymore to avoid immediate unsaved changes warning
             setModifiedIds(new Set())
         } else {
             setProducts(initialProducts)
