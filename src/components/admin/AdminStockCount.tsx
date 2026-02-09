@@ -11,6 +11,14 @@ import { updateStockLevels } from '@/app/admin/actions'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle } from 'lucide-react'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog'
 
 interface AdminStockCountProps {
     initialProducts: Product[]
@@ -23,6 +31,8 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
     const [countMode, setCountMode] = useState<'edit' | 'fresh'>('edit')
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+    const [pendingMode, setPendingMode] = useState<'edit' | 'fresh' | null>(null)
 
     const categories = useMemo(() => {
         const cats = Array.from(new Set(initialProducts.map((p: Product) => p.category)))
@@ -58,23 +68,15 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
         if (newMode === countMode) return
 
         if (modifiedIds.size > 0) {
-            // Use a slight delay to allow the UI to settle before the blocking confirm()
-            // This can prevent some loop behaviors in controlled components
-            setTimeout(() => {
-                if (window.confirm('Je hebt onopgeslagen wijzigingen. Weet je zeker dat je van modus wilt wisselen? Je wijzigingen gaan verloren.')) {
-                    setCountMode(newMode)
-                    if (newMode === 'fresh') {
-                        setProducts(products.map(p => ({ ...p, stock_quantity: 0 })))
-                        setModifiedIds(new Set())
-                    } else {
-                        setProducts(initialProducts)
-                        setModifiedIds(new Set())
-                    }
-                }
-            }, 0)
+            setPendingMode(newMode)
+            setShowConfirmDialog(true)
             return
         }
 
+        applyModeSwitch(newMode)
+    }
+
+    const applyModeSwitch = (newMode: 'edit' | 'fresh') => {
         setCountMode(newMode)
         if (newMode === 'fresh') {
             setProducts(products.map(p => ({ ...p, stock_quantity: 0 })))
@@ -83,6 +85,8 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
             setProducts(initialProducts)
             setModifiedIds(new Set())
         }
+        setShowConfirmDialog(false)
+        setPendingMode(null)
     }
 
     const handleInputChange = (id: string, val: string) => {
@@ -164,7 +168,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                     <div className="flex items-center gap-2 w-full md:w-auto">
                         <Button
                             className="h-12 flex-1 md:flex-none px-8 text-lg font-bold gap-2"
-                            disabled={modifiedIds.size === 0 || saving}
+                            disabled={(countMode === 'edit' && modifiedIds.size === 0) || saving}
                             onClick={handleSave}
                         >
                             {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
@@ -287,6 +291,28 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                     </Button>
                 </div>
             )}
+            {/* Confirmation Dialog */}
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Onopgeslagen wijzigingen</DialogTitle>
+                        <DialogDescription>
+                            Je hebt onopgeslagen wijzigingen. Weet je zeker dat je van modus wilt wisselen? Je wijzigingen gaan verloren.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                            Annuleren
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => pendingMode && applyModeSwitch(pendingMode)}
+                        >
+                            Doorgaan
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
