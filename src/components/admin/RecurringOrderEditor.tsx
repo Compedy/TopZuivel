@@ -80,6 +80,12 @@ export default function RecurringOrderEditor({
             else next[productId] = qty
             return next
         })
+        if (displayVal !== undefined) {
+            setDisplayCart(prev => ({
+                ...prev,
+                [productId]: displayVal
+            }))
+        }
     }
 
     const handleSubmit = async () => {

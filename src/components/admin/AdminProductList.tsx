@@ -5,8 +5,8 @@ import { useState } from 'react'
 import { Product } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { updateProduct } from '@/app/admin/actions'
-import { Loader2, Plus, Edit2, Save, X } from 'lucide-react'
+import { updateProduct, deleteProduct } from '@/app/admin/actions'
+import { Loader2, Plus, Edit2, Save, X, Trash2 } from 'lucide-react'
 import AddProductForm from './AddProductForm'
 
 interface AdminProductListProps {
@@ -70,6 +70,17 @@ function ProductRow({ product }: { product: Product }) {
             setIsEditing(false)
         } else {
             alert('Fout bij opslaan: ' + result.error)
+        }
+        setLoading(false)
+    }
+
+    const handleDelete = async () => {
+        if (!confirm(`Weet je zeker dat je "${product.name}" wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return
+
+        setLoading(true)
+        const result = await deleteProduct(product.id)
+        if (!result.success) {
+            alert('Fout bij verwijderen: ' + result.error)
         }
         setLoading(false)
     }
@@ -140,16 +151,22 @@ function ProductRow({ product }: { product: Product }) {
                         {product.is_active ? 'Actief' : 'Inactief'}
                     </span>
                 </div>
-                <div className="hidden md:block col-span-2 text-right">
+                <div className="hidden md:flex col-span-2 text-right justify-end gap-2 text-right">
                     <Button variant="outline" size="sm" className="h-8 text-xs px-3" onClick={() => setIsEditing(true)}>
                         Bewerken
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete} disabled={loading}>
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                 </div>
 
                 {/* Mobile action button */}
-                <div className="md:hidden flex items-center">
+                <div className="md:hidden flex items-center gap-2">
                     <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setIsEditing(true)}>
                         <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={handleDelete} disabled={loading}>
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                 </div>
             </div>

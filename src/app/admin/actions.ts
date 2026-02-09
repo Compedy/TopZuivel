@@ -419,3 +419,26 @@ export async function wakeUpDatabase() {
 
     return { success: true, count: data?.length || 0 }
 }
+
+export async function deleteProduct(id: string) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    const { error } = await adminSupabase
+        .from('products')
+        .delete()
+        .eq('id', id)
+
+    if (error) {
+        console.error('Delete product error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    revalidatePath('/shop')
+    return { success: true }
+}

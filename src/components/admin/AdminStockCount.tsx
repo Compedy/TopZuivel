@@ -66,7 +66,8 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
         setCountMode(newMode)
         if (newMode === 'fresh') {
             setProducts(products.map(p => ({ ...p, stock_quantity: 0 })))
-            setModifiedIds(new Set(products.map(p => p.id)))
+            // Don't auto-fill modifiedIds anymore to avoid immediate unsaved changes warning
+            setModifiedIds(new Set())
         } else {
             setProducts(initialProducts)
             setModifiedIds(new Set())
@@ -95,10 +96,21 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
         if (modifiedIds.size === 0) return
 
         setSaving(true)
-        const updates = (Array.from(modifiedIds) as string[]).map((id: string) => {
-            const prod = products.find((p: Product) => p.id === id)
-            return { id, stock_quantity: prod?.stock_quantity || 0 }
-        })
+
+        let updates;
+        if (countMode === 'fresh') {
+            // In fresh mode, we save EVERY product (untouched ones remain 0)
+            updates = products.map((p: Product) => ({
+                id: p.id,
+                stock_quantity: p.stock_quantity || 0
+            }))
+        } else {
+            // In edit mode, we only save modified products
+            updates = (Array.from(modifiedIds) as string[]).map((id: string) => {
+                const prod = products.find((p: Product) => p.id === id)
+                return { id, stock_quantity: prod?.stock_quantity || 0 }
+            })
+        }
 
         const result = await updateStockLevels(updates)
         if (result.success) {
@@ -107,7 +119,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
         } else {
             alert('Fout bij opslaan: ' + result.error)
         }
-        setSaving(null as any)
+        setSaving(false)
     }
 
     return (
@@ -145,7 +157,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                             onClick={handleSave}
                         >
                             {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                            Opslaan ({modifiedIds.size})
+                            {countMode === 'fresh' ? 'Nieuwe telling opslaan' : `Opslaan (${modifiedIds.size})`}
                         </Button>
                     </div>
                 </div>
