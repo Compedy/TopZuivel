@@ -18,7 +18,8 @@ interface AdminOrderListProps {
 }
 
 const getDisplayQuantity = (qty: number, unit?: string) => {
-    if (unit === 'st') {
+    const normalizedUnit = unit?.toLowerCase() || ''
+    if (normalizedUnit === 'st' || normalizedUnit === 'stuk' || normalizedUnit === 'blok') {
         return Math.round(qty)
     }
     return qty
@@ -355,10 +356,10 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                 const isCheese = item.products?.category === 'Kaas'
                                                 const editData = editingItems[item.id]
                                                 const standardWeight = item.products?.weight_per_unit || 1
-                                                const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
-                                                const displayWeight = totalWeight / (item.quantity || 1)
-                                                const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
                                                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
+                                                const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
+                                                const displayWeight = totalWeight / (displayQty || 1)
+                                                const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
                                                 const rowTotalPrice = item.products?.is_price_per_kilo
                                                     ? (totalWeight * item.price_snapshot)
                                                     : ((totalWeight / (standardWeight || 1)) * item.price_snapshot)
@@ -389,7 +390,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             <Input
                                                                                 type="text"
                                                                                 inputMode="decimal"
-                                                                                value={editData?.displayTotalWeight || (totalWeight / (item.quantity || 1)).toString()}
+                                                                                value={editData?.displayTotalWeight || displayWeight.toString()}
                                                                                 onChange={(e) => {
                                                                                     initEditing(item)
                                                                                     handleWeightChange(item.id, e.target.value, item.quantity)
@@ -480,11 +481,10 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                     const isCheese = item.products?.category === 'Kaas'
                                                     const editData = editingItems[item.id]
                                                     const standardWeight = item.products?.weight_per_unit || 1
-                                                    const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
-                                                    const displayWeight = totalWeight / (item.quantity || 1)
-                                                    const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
-
                                                     const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
+                                                    const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
+                                                    const displayWeight = totalWeight / (displayQty || 1)
+                                                    const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
 
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
                                                         ? (totalWeight * item.price_snapshot)
@@ -519,7 +519,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                         <Input
                                                                                             type="text"
                                                                                             inputMode="decimal"
-                                                                                            value={editData?.displayTotalWeight || (totalWeight / (item.quantity || 1)).toString()}
+                                                                                            value={editData?.displayTotalWeight || displayWeight.toString()}
                                                                                             onChange={(e) => {
                                                                                                 initEditing(item)
                                                                                                 handleWeightChange(item.id, e.target.value, item.quantity)
