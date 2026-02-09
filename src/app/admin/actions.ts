@@ -289,7 +289,7 @@ export async function convertSingleRecurringOrderToReal(templateId: string) {
     return { success: true }
 }
 
-export async function updateOrderItemQuantity(itemId: string, newQuantity: number) {
+export async function updateOrderItemQuantity(itemId: string, newQuantity: number, newWeight?: number | null) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
 
@@ -297,9 +297,14 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
 
     const adminSupabase = createAdminClient() as any
 
+    const updates: any = { quantity: newQuantity }
+    if (newWeight !== undefined) {
+        updates.actual_weight = newWeight
+    }
+
     const { error } = await adminSupabase
         .from('order_items')
-        .update({ quantity: newQuantity })
+        .update(updates)
         .eq('id', itemId)
 
     if (error) {
@@ -344,7 +349,8 @@ export async function splitOrderItem(itemId: string, quantities: number[]) {
             order_id: original.order_id,
             product_id: original.product_id,
             quantity: qty,
-            price_snapshot: original.price_snapshot
+            price_snapshot: original.price_snapshot,
+            actual_weight: original.actual_weight ? (original.actual_weight / original.quantity) * qty : null
         })))
 
     if (insertError) return { success: false, error: insertError.message }

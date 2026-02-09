@@ -42,7 +42,8 @@ CREATE TABLE order_items (
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
     product_id UUID REFERENCES products(id),
     quantity DECIMAL(10,2) NOT NULL,
-    price_snapshot DECIMAL(10,2) NOT NULL -- Price at time of order
+    price_snapshot DECIMAL(10,2) NOT NULL, -- Price at time of order
+    actual_weight DECIMAL(10,3) -- Optional actual weight for piece-based items
 );
 
 -- Enable RLS

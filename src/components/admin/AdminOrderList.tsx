@@ -65,9 +65,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         if (editingItems[item.id]) return
 
         const standardWeight = item.products?.weight_per_unit || 1
-        const totalWeight = item.quantity * standardWeight
         const unitLabel = item.products?.unit_label?.toLowerCase() || ''
         const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
+
+        // Use actual_weight if it exists, otherwise calculate from quantity
+        const totalWeight = item.actual_weight ?? (item.quantity * standardWeight)
 
         const unitCount = Math.max(1, Math.ceil(item.quantity))
         const units = Array(unitCount).fill(standardWeight)
@@ -158,10 +160,16 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             result = await splitOrderItem(itemId, quantities)
         } else {
             // Standard update
-            const newQuantity = isPieceBased
-                ? editData.totalWeight / (standardWeight || 1)
-                : editData.totalWeight
-            result = await updateOrderItemQuantity(itemId, newQuantity)
+            if (isPieceBased) {
+                // For piece based items, we keep quantity (pieces) the same
+                // and store the total weight in actual_weight
+                const item = filteredOrders.flatMap(o => o.order_items).find(i => i.id === itemId)
+                const pieces = item ? Math.round(item.quantity) : 1
+                result = await updateOrderItemQuantity(itemId, pieces, editData.totalWeight)
+            } else {
+                // For kg items, quantity IS the weight
+                result = await updateOrderItemQuantity(itemId, editData.totalWeight)
+            }
         }
 
         if (result.success) {
@@ -227,7 +235,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             // Table
             const tableData = order.order_items.map(item => {
                 const standardWeight = item.products?.weight_per_unit || 1
-                const weight = item.quantity * standardWeight
+                const weight = item.actual_weight ?? (item.quantity * standardWeight)
                 const isPerKilo = item.products?.is_price_per_kilo
                 const totalPrice = isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
@@ -253,7 +261,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             // Totals
             const totalItems = order.order_items.reduce((sum, item) => sum + getDisplayQuantity(item.quantity, item.products?.unit_label), 0)
             const totalPrice = order.order_items.reduce((sum, item) => {
-                const weight = item.quantity * (item.products?.weight_per_unit || 1)
+                const standardWeight = item.products?.weight_per_unit || 1
+                const weight = item.actual_weight ?? (item.quantity * standardWeight)
                 const isPerKilo = item.products?.is_price_per_kilo
                 return sum + (isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot)
             }, 0)
@@ -370,12 +379,14 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                 const editData = editingItems[item.id]
                                                 const standardWeight = item.products?.weight_per_unit || 1
                                                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
-                                                const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
+                                                const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
                                                 const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
-                                                const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
+                                                const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
+                                                const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
+
                                                 const rowTotalPrice = item.products?.is_price_per_kilo
                                                     ? (totalWeight * item.price_snapshot)
-                                                    : ((totalWeight / (standardWeight || 1)) * item.price_snapshot)
+                                                    : (displayQty * item.price_snapshot)
 
                                                 return (
                                                     <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-muted/10">
@@ -499,13 +510,14 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                     const editData = editingItems[item.id]
                                                     const standardWeight = item.products?.weight_per_unit || 1
                                                     const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
-                                                    const totalWeight = editData ? editData.totalWeight : (item.quantity * standardWeight)
+                                                    const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
                                                     const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
-                                                    const hasChanged = Math.abs(totalWeight - (item.quantity * standardWeight)) > 0.0001
+                                                    const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
+                                                    const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
 
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
                                                         ? (totalWeight * item.price_snapshot)
-                                                        : ((totalWeight / (standardWeight || 1)) * item.price_snapshot)
+                                                        : (displayQty * item.price_snapshot)
 
                                                     return (
                                                         <tr key={item.id} className="hover:bg-muted/10 transition-colors">
@@ -594,7 +606,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             <div className="flex items-center gap-2">
                                                                                 {hasChanged && (
                                                                                     <span className="text-[10px] text-orange-600 font-bold">
-                                                                                        Verschil: {(((totalWeight / (item.quantity * standardWeight)) - 1) * 100).toFixed(1)}%
+                                                                                        Verschil: {(((totalWeight / initialWeight) - 1) * 100).toFixed(1)}%
                                                                                     </span>
                                                                                 )}
                                                                                 <div className="text-xs font-bold text-primary">
@@ -681,14 +693,14 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                             <div className="text-2xl font-black text-primary">
                                                 {formatPrice(order.order_items.reduce((sum, item) => {
                                                     const editData = editingItems[item.id]
-                                                    const weight = editData ? editData.totalWeight : (item.quantity * (item.products?.weight_per_unit || 1))
+                                                    const standardWeight = item.products?.weight_per_unit || 1
+                                                    const weight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
 
                                                     if (item.products?.is_price_per_kilo) {
                                                         return sum + (weight * item.price_snapshot)
                                                     } else {
-                                                        const standardWeight = item.products?.weight_per_unit || 1
-                                                        const ratio = standardWeight > 0 ? (weight / standardWeight) : item.quantity
-                                                        return sum + (ratio * item.price_snapshot)
+                                                        const pieces = Math.round(item.quantity)
+                                                        return sum + (pieces * item.price_snapshot)
                                                     }
                                                 }, 0))}
                                             </div>

@@ -74,10 +74,15 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
         const totals: Record<string, number> = {}
 
         weekOrders.forEach(order => {
-            order.order_items?.forEach((item: OrderItem) => {
+            order.order_items?.forEach((item) => {
                 const productId = item.product_id
                 if (productId) {
-                    totals[productId] = (totals[productId] || 0) + item.quantity
+                    const unitLabel = item.products?.unit_label?.toLowerCase() || ''
+                    const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
+                    // For piece based, we want the count of pieces
+                    // For weight based (kg), quantity IS the weight
+                    const amount = isPieceBased ? Math.round(item.quantity) : item.quantity
+                    totals[productId] = (totals[productId] || 0) + amount
                 }
             })
         })
