@@ -17,6 +17,9 @@ CREATE TABLE products (
     sort_order INTEGER DEFAULT 999
 );
 
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_products_active_sort ON products(is_active, sort_order);
+
 -- Enable RLS
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 
@@ -52,3 +55,8 @@ CREATE POLICY "Public read active products" ON products FOR SELECT USING (is_act
 
 -- Orders & Items: RLS is enabled, but policies are omitted as admin uses Service Role.
 -- This ensures only the Service Role (Backoffice) can access these tables.
+
+-- Additional Indexes for joins and filters
+CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_orders_week_status ON orders(week_number, status);
