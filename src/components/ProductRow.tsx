@@ -1,9 +1,9 @@
-
 'use client'
 
 import { Product } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useState, useEffect } from 'react'
 import { Minus, Plus } from 'lucide-react'
 
 interface ProductRowProps {
@@ -14,13 +14,28 @@ interface ProductRowProps {
 
 export default function ProductRow({ product, quantity, onQuantityChange }: ProductRowProps) {
 
+    const [displayQuantity, setDisplayQuantity] = useState(quantity.toString())
+
+    // Sync display quantity when the actual quantity prop changes (e.g. from buttons or other source)
+    useEffect(() => {
+        if (parseFloat(displayQuantity) !== quantity) {
+            setDisplayQuantity(quantity.toString())
+        }
+    }, [quantity])
+
     const handleIncrement = () => onQuantityChange(product.id, quantity + 1)
     const handleDecrement = () => onQuantityChange(product.id, Math.max(0, quantity - 1))
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseInt(e.target.value)
+        const value = e.target.value
+        setDisplayQuantity(value)
+
+        const rawVal = value.replace(',', '.')
+        const val = parseFloat(rawVal)
         if (!isNaN(val) && val >= 0) {
             onQuantityChange(product.id, val)
+        } else if (value === '') {
+            onQuantityChange(product.id, 0)
         }
     }
 
@@ -65,9 +80,9 @@ export default function ProductRow({ product, quantity, onQuantityChange }: Prod
                         <Minus className="h-4 w-4" />
                     </Button>
                     <Input
-                        type="number"
-                        min="0"
-                        value={quantity}
+                        type="text"
+                        inputMode="decimal"
+                        value={displayQuantity}
                         onChange={handleInputChange}
                         className="h-8 w-16 text-center"
                     />

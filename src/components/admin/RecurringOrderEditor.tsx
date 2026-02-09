@@ -42,6 +42,7 @@ export default function RecurringOrderEditor({
         }), {}) || {}
     )
     const [searchTerm, setSearchTerm] = useState('')
+    const [displayCart, setDisplayCart] = useState<Record<string, string>>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Sync state when existingOrder changes or dialog opens
@@ -50,10 +51,15 @@ export default function RecurringOrderEditor({
             setCompanyName(existingOrder?.company_name || '')
             setEmail(existingOrder?.email || '')
             setPriceModifier(existingOrder?.price_modifier?.toString() || '0')
-            setCart(existingOrder?.recurring_order_items.reduce((acc, item) => ({
+            const initialCart = existingOrder?.recurring_order_items.reduce((acc, item) => ({
                 ...acc,
                 [item.product_id]: item.quantity
-            }), {}) || {})
+            }), {}) || {}
+            setCart(initialCart)
+            setDisplayCart(Object.entries(initialCart).reduce((acc, [id, qty]) => ({
+                ...acc,
+                [id]: (qty as number).toString()
+            }), {}))
             setSearchTerm('')
         }
     }, [open, existingOrder])
@@ -67,7 +73,7 @@ export default function RecurringOrderEditor({
         )
     }, [products, searchTerm])
 
-    const handleQuantityChange = (productId: string, qty: number) => {
+    const handleQuantityChange = (productId: string, qty: number, displayVal?: string) => {
         setCart((prev: Record<string, number>) => {
             const next = { ...prev }
             if (qty <= 0) delete next[productId]
@@ -98,7 +104,7 @@ export default function RecurringOrderEditor({
                 id: existingOrder?.id,
                 company_name: companyName,
                 email: email,
-                price_modifier: parseFloat(priceModifier) || 0,
+                price_modifier: parseFloat(priceModifier.replace(',', '.')) || 0,
                 is_active: existingOrder?.is_active ?? true
             },
             items
@@ -148,10 +154,13 @@ export default function RecurringOrderEditor({
                             </Label>
                             <Input
                                 id="modifier"
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={priceModifier}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPriceModifier(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    const rawVal = e.target.value.replace(',', '.')
+                                    setPriceModifier(rawVal)
+                                }}
                                 placeholder="Bijv. -10 voor korting, 5 voor premium"
                             />
                             <p className="text-[10px] text-muted-foreground">Positief = duurder, Negatief = goedkoper</p>
@@ -213,10 +222,14 @@ export default function RecurringOrderEditor({
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Input
-                                                        type="number"
+                                                        type="text"
+                                                        inputMode="decimal"
                                                         className="w-16 h-8 text-xs text-right"
-                                                        value={qty}
-                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleQuantityChange(pid, parseFloat(e.target.value) || 0)}
+                                                        value={displayCart[pid] ?? qty.toString()}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                            const val = parseFloat(e.target.value.replace(',', '.'))
+                                                            handleQuantityChange(pid, isNaN(val) ? 0 : val, e.target.value)
+                                                        }}
                                                     />
                                                     <Button
                                                         size="sm"

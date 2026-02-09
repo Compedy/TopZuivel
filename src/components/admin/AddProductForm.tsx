@@ -95,11 +95,11 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                         <Label htmlFor="price">Prijs (€)</Label>
                         <Input
                             id="price"
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             required
                             value={formData.price}
-                            onChange={e => setFormData({ ...formData, price: e.target.value })}
+                            onChange={e => setFormData({ ...formData, price: e.target.value.replace(',', '.') })}
                         />
                     </div>
                     <div className="space-y-2">
@@ -118,10 +118,10 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                     <Label htmlFor="weight_per_unit">Gewicht (per eenheid)</Label>
                     <Input
                         id="weight_per_unit"
-                        type="number"
-                        step="0.001"
+                        type="text"
+                        inputMode="decimal"
                         value={formData.weight_per_unit}
-                        onChange={e => setFormData({ ...formData, weight_per_unit: e.target.value })}
+                        onChange={e => setFormData({ ...formData, weight_per_unit: e.target.value.replace(',', '.') })}
                     />
                 </div>
 

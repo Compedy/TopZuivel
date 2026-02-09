@@ -32,7 +32,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             company_name: companyName,
             email: email,
             week_number: currentWeek,
-            status: 'pending'
+            status: 'open'
         })
         .select()
         .single()
