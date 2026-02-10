@@ -197,7 +197,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 // and store the total weight in actual_weight
                 const item = filteredOrders.flatMap(o => o.order_items).find(i => i.id === itemId)
                 const pieces = item ? Math.round(item.quantity) : 1
-                result = await updateOrderItemQuantity(itemId, pieces, editData.totalWeight)
+
+                // If the manually entered weight is equal to standard, store null instead
+                const standardTotalWeight = pieces * (standardWeight || 1)
+                const isActuallyDifferent = Math.abs(editData.totalWeight - standardTotalWeight) > 0.0001
+                const weightToStore = isActuallyDifferent ? editData.totalWeight : null
+
+                result = await updateOrderItemQuantity(itemId, pieces, weightToStore)
             } else {
                 // For kg items, quantity IS the weight
                 result = await updateOrderItemQuantity(itemId, editData.totalWeight)
@@ -431,12 +437,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </div>
                                                             <div className="text-right">
                                                                 <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
+                                                                <div className="text-[10px] text-muted-foreground">{formatPrice(item.price_snapshot)} / {item.products?.unit_label}</div>
                                                                 {isCheese && (
-                                                                    <div className="text-[10px] text-muted-foreground flex justify-between">
+                                                                    <div className="text-[10px] text-muted-foreground flex flex-col items-end gap-0.5 mt-1">
                                                                         <span>Standaard: {standardWeight.toFixed(3)} kg/st</span>
                                                                         {item.actual_weight !== null && (
-                                                                            <span className="text-orange-600 font-bold flex items-center gap-1">
-                                                                                <Scale className="h-2 w-2" /> Opgeslagen
+                                                                            <span className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-1 rounded border border-orange-100">
+                                                                                <Scale className="h-2 w-2" /> Aangepast: {(item.actual_weight / (displayQty || 1)).toFixed(3)}kg/st
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -462,6 +469,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             />
                                                                         </div>
                                                                         <span className="text-xs font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
+                                                                        {isPieceBased && (
+                                                                            <div className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
+                                                                                ({formatPrice(item.price_snapshot)} /st)
+                                                                            </div>
+                                                                        )}
                                                                         {isPieceBased && item.quantity >= 1 && (
                                                                             <Button
                                                                                 variant="outline"
@@ -579,22 +591,24 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                 )}
                                                             </td>
                                                             <td className="py-4 px-4 text-center">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-semibold">{displayQty} {item.products?.unit_label}</span>
+                                                                <div className="flex flex-col items-center">
+                                                                    <span className="font-semibold text-base">{displayQty} {item.products?.unit_label}</span>
+                                                                    <span className="text-[10px] text-muted-foreground">{formatPrice(item.price_snapshot)} / {item.products?.unit_label}</span>
                                                                     {isCheese && (
-                                                                        <div className="flex flex-col mt-1">
-                                                                            <span className="text-[10px] text-muted-foreground bg-muted p-1 rounded">
+                                                                        <div className="flex flex-col mt-2 gap-1 w-full max-w-[140px]">
+                                                                            <span className="text-[10px] text-muted-foreground bg-muted/50 p-1 rounded border border-border/50">
                                                                                 Standaard: {standardWeight.toFixed(3)} kg/st
                                                                             </span>
                                                                             {item.actual_weight !== null && (
-                                                                                <span className="text-[10px] text-blue-600 font-bold bg-blue-50 p-1 rounded mt-1 flex items-center gap-1 justify-center">
-                                                                                    <Scale className="h-2 w-2" /> Handmatig aangepast
+                                                                                <span className="text-[10px] text-blue-700 font-bold bg-blue-50 p-1 rounded flex items-center gap-1 justify-center border border-blue-100 shadow-sm">
+                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast: {(item.actual_weight / (displayQty || 1)).toFixed(3)}kg/st
                                                                                 </span>
                                                                             )}
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             </td>
+
                                                             <td className="py-4 px-4 text-right">
                                                                 <div className="flex flex-col items-end gap-2">
                                                                     {isWeightAdjustable ? (
@@ -615,6 +629,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                         />
                                                                                     </div>
                                                                                     <span className="text-sm font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
+                                                                                    {isPieceBased && (
+                                                                                        <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
+                                                                                            {formatPrice(item.price_snapshot)} /st
+                                                                                        </div>
+                                                                                    )}
 
                                                                                     {isPieceBased && item.quantity >= 1 && (
                                                                                         <Button
