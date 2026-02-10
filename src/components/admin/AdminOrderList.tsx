@@ -275,7 +275,18 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 const standardWeight = item.products?.weight_per_unit || 1
                 const weight = item.actual_weight ?? (item.quantity * standardWeight)
                 const isPerKilo = item.products?.is_price_per_kilo
-                const totalPrice = isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
+                const unitLabel = item.products?.unit_label?.toLowerCase() || ''
+                const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
+
+                let totalPrice;
+                if (isPerKilo) {
+                    totalPrice = weight * item.price_snapshot
+                } else if (isPieceBased && standardWeight > 0) {
+                    totalPrice = weight * (item.price_snapshot / standardWeight)
+                } else {
+                    totalPrice = item.quantity * item.price_snapshot
+                }
+
                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
 
                 return [
@@ -302,7 +313,16 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 const standardWeight = item.products?.weight_per_unit || 1
                 const weight = item.actual_weight ?? (item.quantity * standardWeight)
                 const isPerKilo = item.products?.is_price_per_kilo
-                return sum + (isPerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot)
+                const unitLabel = item.products?.unit_label?.toLowerCase() || ''
+                const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
+
+                if (isPerKilo) {
+                    return sum + (weight * item.price_snapshot)
+                } else if (isPieceBased && standardWeight > 0) {
+                    return sum + (weight * (item.price_snapshot / standardWeight))
+                } else {
+                    return sum + (item.quantity * item.price_snapshot)
+                }
             }, 0)
 
             const lastY = (doc as any).lastAutoTable.finalY + 10
@@ -424,7 +444,9 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
 
                                                 const rowTotalPrice = item.products?.is_price_per_kilo
                                                     ? (totalWeight * item.price_snapshot)
-                                                    : (displayQty * item.price_snapshot)
+                                                    : (standardWeight > 0 && isPieceBased)
+                                                        ? (totalWeight * (item.price_snapshot / standardWeight))
+                                                        : (displayQty * item.price_snapshot)
 
                                                 return (
                                                     <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-muted/10">
@@ -581,7 +603,9 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
 
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
                                                         ? (totalWeight * item.price_snapshot)
-                                                        : (displayQty * item.price_snapshot)
+                                                        : (standardWeight > 0 && isPieceBased)
+                                                            ? (totalWeight * (item.price_snapshot / standardWeight))
+                                                            : (displayQty * item.price_snapshot)
 
                                                     return (
                                                         <tr key={item.id} className="hover:bg-muted/10 transition-colors">
@@ -786,8 +810,14 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                     const standardWeight = item.products?.weight_per_unit || 1
                                                     const weight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
 
-                                                    if (item.products?.is_price_per_kilo) {
+                                                    const unitLabel = item.products?.unit_label?.toLowerCase() || ''
+                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
+                                                    const isPerKilo = item.products?.is_price_per_kilo
+
+                                                    if (isPerKilo) {
                                                         return sum + (weight * item.price_snapshot)
+                                                    } else if (isPieceBased && standardWeight > 0) {
+                                                        return sum + (weight * (item.price_snapshot / standardWeight))
                                                     } else {
                                                         const pieces = Math.round(item.quantity)
                                                         return sum + (pieces * item.price_snapshot)

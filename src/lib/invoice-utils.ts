@@ -80,7 +80,9 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
                         quantity: isPieceBased ? total.pieces : total.weight,
                         priceAtSnapshot: total.price,
                         totalLinePrice: isPieceBased
-                            ? (p.is_price_per_kilo ? total.weight * total.price : total.pieces * total.price)
+                            ? (p.is_price_per_kilo
+                                ? total.weight * total.price
+                                : (p.weight_per_unit > 0 ? total.weight * (total.price / p.weight_per_unit) : total.pieces * total.price))
                             : (total.weight * total.price)
                     }
                 })
