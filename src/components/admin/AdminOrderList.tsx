@@ -146,6 +146,38 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         })
     }
 
+    const resetWeight = async (itemId: string, unitLabel?: string) => {
+        setSaving(itemId)
+        const item = filteredOrders.flatMap(o => o.order_items).find(i => i.id === itemId)
+        const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel?.toLowerCase() || '')
+
+        // For piece based items, we want to clear the actual_weight override
+        // while keeping the current pieces count.
+        // For KG items, clearing weight is tricky because quantity IS weight.
+        // But the user specifically mentioned prepacked items (piece based).
+
+        let result;
+        if (isPieceBased) {
+            const pieces = item ? Math.round(item.quantity) : 1
+            result = await updateOrderItemQuantity(itemId, pieces, null)
+        } else {
+            // For kg items, just notify success or do nothing if not applicable
+            // (kg items don't really have "standard weight" overrides in the same way)
+            result = { success: true }
+        }
+
+        if (result.success) {
+            setEditingItems(prev => {
+                const newState = { ...prev }
+                delete newState[itemId]
+                return newState
+            })
+        } else {
+            alert('Fout bij herstellen: ' + result.error)
+        }
+        setSaving(null)
+    }
+
     const saveWeight = async (itemId: string, standardWeight: number, unitLabel?: string) => {
         const editData = editingItems[itemId]
         if (!editData) return
@@ -400,7 +432,14 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             <div className="text-right">
                                                                 <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
                                                                 {isCheese && (
-                                                                    <div className="text-[10px] text-muted-foreground">Standaard: {standardWeight.toFixed(3)} kg/st</div>
+                                                                    <div className="text-[10px] text-muted-foreground flex justify-between">
+                                                                        <span>Standaard: {standardWeight.toFixed(3)} kg/st</span>
+                                                                        {item.actual_weight !== null && (
+                                                                            <span className="text-orange-600 font-bold flex items-center gap-1">
+                                                                                <Scale className="h-2 w-2" /> Opgeslagen
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -414,12 +453,12 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             <Input
                                                                                 type="text"
                                                                                 inputMode="decimal"
-                                                                                value={editData?.displayTotalWeight || displayWeight.toString()}
+                                                                                value={editData?.displayTotalWeight ?? displayWeight.toString()}
                                                                                 onChange={(e) => {
                                                                                     initEditing(item)
                                                                                     handleWeightChange(item.id, e.target.value, isPieceBased ? displayQty : 1)
                                                                                 }}
-                                                                                className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : 'border-input'}`}
+                                                                                className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
                                                                             />
                                                                         </div>
                                                                         <span className="text-xs font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
@@ -473,8 +512,20 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                 const newState = { ...prev };
                                                                                 delete newState[item.id];
                                                                                 return newState;
-                                                                            })} className="h-8 text-destructive">
+                                                                            })} className="h-8 text-destructive" title="Wijzigingen ongedaan maken">
                                                                                 <RotateCcw className="h-3 w-3" />
+                                                                            </Button>
+                                                                        )}
+                                                                        {item.actual_weight !== null && !hasChanged && !editData?.isExpanded && (
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => resetWeight(item.id, item.products?.unit_label)}
+                                                                                className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                                title="Herstellen naar standaard productgewicht"
+                                                                            >
+                                                                                <RotateCcw className="h-3 w-3" />
+                                                                                <span className="text-[10px] ml-1">Reset</span>
                                                                             </Button>
                                                                         )}
                                                                     </div>
@@ -531,9 +582,16 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                 <div className="flex flex-col">
                                                                     <span className="font-semibold">{displayQty} {item.products?.unit_label}</span>
                                                                     {isCheese && (
-                                                                        <span className="text-[10px] text-muted-foreground bg-muted p-1 rounded mt-1">
-                                                                            Standaard: {standardWeight.toFixed(3)} kg/st
-                                                                        </span>
+                                                                        <div className="flex flex-col mt-1">
+                                                                            <span className="text-[10px] text-muted-foreground bg-muted p-1 rounded">
+                                                                                Standaard: {standardWeight.toFixed(3)} kg/st
+                                                                            </span>
+                                                                            {item.actual_weight !== null && (
+                                                                                <span className="text-[10px] text-blue-600 font-bold bg-blue-50 p-1 rounded mt-1 flex items-center gap-1 justify-center">
+                                                                                    <Scale className="h-2 w-2" /> Handmatig aangepast
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -548,12 +606,12 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                         <Input
                                                                                             type="text"
                                                                                             inputMode="decimal"
-                                                                                            value={editData?.displayTotalWeight || displayWeight.toString()}
+                                                                                            value={editData?.displayTotalWeight ?? displayWeight.toString()}
                                                                                             onChange={(e) => {
                                                                                                 initEditing(item)
                                                                                                 handleWeightChange(item.id, e.target.value, isPieceBased ? displayQty : 1)
                                                                                             }}
-                                                                                            className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : 'border-input'}`}
+                                                                                            className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
                                                                                         />
                                                                                     </div>
                                                                                     <span className="text-sm font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
@@ -651,6 +709,17 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             >
                                                                                 <RotateCcw className="h-3 w-3 mr-1" />
                                                                                 Herstellen
+                                                                            </Button>
+                                                                        )}
+                                                                        {item.actual_weight !== null && !hasChanged && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                className="h-7 text-[10px] text-blue-600 border-blue-200 hover:bg-blue-50 w-full mt-1"
+                                                                                onClick={() => resetWeight(item.id, item.products?.unit_label)}
+                                                                            >
+                                                                                <RotateCcw className="h-3 w-3 mr-1" />
+                                                                                Terug naar Standaard
                                                                             </Button>
                                                                         )}
                                                                     </div>

@@ -297,10 +297,9 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
 
     const adminSupabase = createAdminClient() as any
 
-    const updates: any = { quantity: newQuantity }
-    if (newWeight !== undefined) {
-        updates.actual_weight = newWeight
-    }
+    const updates: any = {}
+    if (newQuantity !== undefined) updates.quantity = newQuantity
+    if (newWeight !== undefined) updates.actual_weight = newWeight
 
     const { error } = await adminSupabase
         .from('order_items')
