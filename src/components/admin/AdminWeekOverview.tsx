@@ -176,7 +176,6 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                                                             <td className="py-2 px-4 md:py-2.5 md:px-6">
                                                                                 <div className="flex flex-col">
                                                                                     <span className="font-semibold text-xs md:text-sm text-foreground">{product.name}</span>
-                                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.type_group}</span>
                                                                                 </div>
                                                                             </td>
                                                                             <td className="py-2 px-4 md:py-2.5 md:px-6 text-right">

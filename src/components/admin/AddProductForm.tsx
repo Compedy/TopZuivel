@@ -1,43 +1,72 @@
 
-'use client'
-
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { addProduct } from '@/app/admin/actions'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus, X } from 'lucide-react'
+import { Product } from '@/types'
 
 interface AddProductFormProps {
+    products: Product[]
     onSuccess: () => void
     onCancel: () => void
 }
 
-export default function AddProductForm({ onSuccess, onCancel }: AddProductFormProps) {
+type ProductType = 'kilo' | 'prepacked' | 'fixed'
+
+export default function AddProductForm({ products, onSuccess, onCancel }: AddProductFormProps) {
     const [loading, setLoading] = useState(false)
+    const [productType, setProductType] = useState<ProductType>('fixed')
+    const [showNewCategory, setShowNewCategory] = useState(false)
+    const [newCategoryName, setNewCategoryName] = useState('')
+
     const [formData, setFormData] = useState({
         name: '',
         category: 'Zuivel',
-        type_group: '',
         price: '',
         unit_label: 'stuk',
         weight_per_unit: '',
         is_active: true
     })
 
+    const categories = useMemo(() => {
+        const unique = Array.from(new Set(products.map(p => p.category)))
+        return unique.sort()
+    }, [products])
+
+    const handleTypeChange = (type: ProductType) => {
+        setProductType(type)
+        if (type === 'kilo') {
+            setFormData(prev => ({ ...prev, unit_label: 'kg', weight_per_unit: '1' }))
+        } else if (type === 'prepacked') {
+            setFormData(prev => ({ ...prev, unit_label: 'st', weight_per_unit: '0.500' }))
+        } else {
+            setFormData(prev => ({ ...prev, unit_label: 'st', weight_per_unit: '0' }))
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
 
+        const finalCategory = showNewCategory ? newCategoryName : formData.category
+        if (!finalCategory) {
+            alert('Selecteer of voer een categorie in')
+            setLoading(false)
+            return
+        }
+
         const result = await addProduct({
             name: formData.name,
-            category: formData.category,
-            type_group: formData.type_group,
+            category: finalCategory,
             price: parseFloat(formData.price),
             unit_label: formData.unit_label,
-            weight_per_unit: parseFloat(formData.weight_per_unit),
-            is_active: formData.is_active
+            weight_per_unit: productType === 'kilo' ? 1 : parseFloat(formData.weight_per_unit) || 0,
+            is_price_per_kilo: productType === 'kilo',
+            is_active: formData.is_active,
+            type_group: 'Algemeen' // Defaulting to Algemeen as requested to remove from UI
         } as any)
 
         if (result.success) {
@@ -53,6 +82,41 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
             <h3 className="font-bold text-lg">Nieuw Product Toevoegen</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                    <Label>Product Type</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                        <Button
+                            type="button"
+                            variant={productType === 'kilo' ? 'default' : 'outline'}
+                            onClick={() => handleTypeChange('kilo')}
+                            className="text-xs h-9"
+                        >
+                            Per Kilo
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={productType === 'prepacked' ? 'default' : 'outline'}
+                            onClick={() => handleTypeChange('prepacked')}
+                            className="text-xs h-9"
+                        >
+                            Gevacumeerd
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={productType === 'fixed' ? 'default' : 'outline'}
+                            onClick={() => handleTypeChange('fixed')}
+                            className="text-xs h-9"
+                        >
+                            Vaste Prijs
+                        </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground italic">
+                        {productType === 'kilo' && "Product wordt per kilo verkocht. Prijs is per kg."}
+                        {productType === 'prepacked' && "Per stuk verkocht, maar gewicht kan per order worden aangepast."}
+                        {productType === 'fixed' && "Vaste prijs per stuk. Gewicht kan niet worden aangepast."}
+                    </p>
+                </div>
+
                 <div className="space-y-2">
                     <Label htmlFor="name">Naam</Label>
                     <Input
@@ -66,28 +130,51 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
 
                 <div className="space-y-2">
                     <Label htmlFor="category">Categorie</Label>
-                    <Select
-                        value={formData.category}
-                        onValueChange={(val: string) => setFormData({ ...formData, category: val })}
-                    >
-                        <SelectTrigger id="category">
-                            <SelectValue placeholder="Selecteer categorie" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Kaas">Kaas</SelectItem>
-                            <SelectItem value="Zuivel">Zuivel</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="type_group">Type Groep</Label>
-                    <Input
-                        id="type_group"
-                        value={formData.type_group}
-                        onChange={e => setFormData({ ...formData, type_group: e.target.value })}
-                        placeholder="Bijv. Goudse Kaas"
-                    />
+                    {!showNewCategory ? (
+                        <div className="flex gap-2">
+                            <Select
+                                value={formData.category}
+                                onValueChange={(val: string) => setFormData({ ...formData, category: val })}
+                            >
+                                <SelectTrigger id="category" className="flex-1">
+                                    <SelectValue placeholder="Selecteer categorie" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map(cat => (
+                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setShowNewCategory(true)}
+                                title="Nieuwe categorie"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="Nieuwe categorienaam"
+                                value={newCategoryName}
+                                onChange={e => setNewCategoryName(e.target.value)}
+                                autoFocus
+                            />
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => {
+                                    setShowNewCategory(false)
+                                    setNewCategoryName('')
+                                }}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -100,6 +187,7 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                             required
                             value={formData.price}
                             onChange={e => setFormData({ ...formData, price: e.target.value.replace(',', '.') })}
+                            placeholder="0.00"
                         />
                     </div>
                     <div className="space-y-2">
@@ -110,18 +198,23 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                             value={formData.unit_label}
                             onChange={e => setFormData({ ...formData, unit_label: e.target.value })}
                             placeholder="stuk, kg, blok"
+                            disabled={productType === 'kilo'}
                         />
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="weight_per_unit">Gewicht (per eenheid)</Label>
+                    <Label htmlFor="weight_per_unit">
+                        {productType === 'kilo' ? "Standaard Gewicht (1kg)" : "Standaard Gewicht per stuk"}
+                    </Label>
                     <Input
                         id="weight_per_unit"
                         type="text"
                         inputMode="decimal"
                         value={formData.weight_per_unit}
                         onChange={e => setFormData({ ...formData, weight_per_unit: e.target.value.replace(',', '.') })}
+                        disabled={productType === 'kilo' || productType === 'fixed'}
+                        placeholder="0.000"
                     />
                 </div>
 

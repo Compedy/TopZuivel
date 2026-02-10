@@ -1,11 +1,12 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Product } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { updateProduct, deleteProduct } from '@/app/admin/actions'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Plus, Edit2, Save, X, Trash2 } from 'lucide-react'
 import AddProductForm from './AddProductForm'
 
@@ -15,6 +16,12 @@ interface AdminProductListProps {
 
 export default function AdminProductList({ initialProducts }: AdminProductListProps) {
     const [isAdding, setIsAdding] = useState(false)
+
+    // Extract unique categories for the editors
+    const categories = useMemo(() => {
+        const unique = Array.from(new Set(initialProducts.map(p => p.category)))
+        return unique.sort()
+    }, [initialProducts])
 
     return (
         <div className="space-y-4">
@@ -31,6 +38,7 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
 
             {isAdding && (
                 <AddProductForm
+                    products={initialProducts}
                     onSuccess={() => setIsAdding(false)}
                     onCancel={() => setIsAdding(false)}
                 />
@@ -38,15 +46,15 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
 
             <div className="rounded-md border bg-card overflow-hidden">
                 <div className="hidden md:grid grid-cols-12 gap-4 p-4 font-medium text-sm text-muted-foreground border-b bg-muted/40">
-                    <div className="col-span-4">Naam</div>
+                    <div className="col-span-4">Naam / Categorie</div>
                     <div className="col-span-2 text-right">Prijs</div>
-                    <div className="col-span-2 text-right">Gewicht</div>
+                    <div className="col-span-2 text-center">Type</div>
                     <div className="col-span-2 text-center">Actief</div>
                     <div className="col-span-2 text-right">Acties</div>
                 </div>
                 <div className="divide-y relative">
                     {initialProducts.map((product: Product) => (
-                        <ProductRow key={product.id} product={product} />
+                        <ProductRow key={product.id} product={product} categories={categories} />
                     ))}
                 </div>
             </div>
@@ -54,13 +62,15 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
     )
 }
 
-function ProductRow({ product }: { product: Product }) {
+function ProductRow({ product, categories }: { product: Product, categories: string[] }) {
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState({
         price: product.price,
         weight_per_unit: product.weight_per_unit,
-        is_active: product.is_active
+        is_active: product.is_active,
+        category: product.category,
+        is_price_per_kilo: product.is_price_per_kilo
     })
 
     const handleSave = async () => {
@@ -88,7 +98,22 @@ function ProductRow({ product }: { product: Product }) {
     if (isEditing) {
         return (
             <div className="p-3 bg-accent/10 border-l-4 border-primary animate-in fade-in space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 md:items-center">
-                <div className="md:col-span-4 text-sm font-bold truncate">{product.name}</div>
+                <div className="md:col-span-4 flex flex-col gap-1">
+                    <div className="text-sm font-bold truncate">{product.name}</div>
+                    <Select
+                        value={data.category}
+                        onValueChange={(val: string) => setData({ ...data, category: val })}
+                    >
+                        <SelectTrigger className="h-7 text-[10px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {categories.map(cat => (
+                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
                 <div className="grid grid-cols-2 gap-3 md:contents">
                     <div className="space-y-1 md:col-span-2">
                         <label className="text-[9px] uppercase font-bold text-muted-foreground">Prijs (€)</label>
@@ -101,14 +126,40 @@ function ProductRow({ product }: { product: Product }) {
                         />
                     </div>
                     <div className="space-y-1 md:col-span-2">
-                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Gewicht ({product.unit_label})</label>
-                        <Input
-                            type="number"
-                            step="0.001"
-                            value={data.weight_per_unit}
-                            onChange={(e) => setData({ ...data, weight_per_unit: parseFloat(e.target.value) || 0 })}
-                            className="h-8 text-right text-xs"
-                        />
+                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Type</label>
+                        <Select
+                            value={data.is_price_per_kilo ? 'kilo' : data.weight_per_unit > 0 ? 'prepacked' : 'fixed'}
+                            onValueChange={(val) => {
+                                if (val === 'kilo') {
+                                    setData({ ...data, is_price_per_kilo: true, weight_per_unit: 1 })
+                                } else if (val === 'prepacked') {
+                                    setData({ ...data, is_price_per_kilo: false, weight_per_unit: data.weight_per_unit || 0.5 })
+                                } else {
+                                    setData({ ...data, is_price_per_kilo: false, weight_per_unit: 0 })
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="h-8 text-[10px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="kilo">Per Kilo</SelectItem>
+                                <SelectItem value="prepacked">Verpakt</SelectItem>
+                                <SelectItem value="fixed">Vast</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {data.weight_per_unit > 0 && !data.is_price_per_kilo && (
+                            <div className="flex items-center gap-1 mt-1">
+                                <Input
+                                    type="number"
+                                    step="0.001"
+                                    value={data.weight_per_unit}
+                                    onChange={(e) => setData({ ...data, weight_per_unit: parseFloat(e.target.value) || 0 })}
+                                    className="h-6 text-right text-[10px] py-0 px-1 w-16"
+                                />
+                                <span className="text-[9px] text-muted-foreground">kg</span>
+                            </div>
+                        )}
                     </div>
                     <div className="flex flex-col md:col-span-2 gap-1">
                         <label className="text-[9px] uppercase font-bold text-muted-foreground md:hidden">Status</label>
@@ -141,11 +192,25 @@ function ProductRow({ product }: { product: Product }) {
     return (
         <div className="hover:bg-muted/30 transition-colors text-sm">
             <div className="flex items-center justify-between p-3 md:grid md:grid-cols-12 md:gap-4">
-                <div className="md:col-span-4 font-bold md:font-medium text-sm md:text-sm truncate mr-2">{product.name}</div>
+                <div className="md:col-span-4 flex flex-col truncate mr-2">
+                    <span className="font-bold md:font-medium text-sm truncate">{product.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{product.category}</span>
+                </div>
 
                 {/* Desktop layout */}
-                <div className="hidden md:block col-span-2 text-right">€{product.price.toFixed(2)}</div>
-                <div className="hidden md:block col-span-2 text-right text-muted-foreground">{product.weight_per_unit} {product.unit_label}</div>
+                <div className="hidden md:block col-span-2 text-right font-mono">€{product.price.toFixed(2)}</div>
+                <div className="hidden md:block col-span-2 text-center text-[10px]">
+                    {product.is_price_per_kilo ? (
+                        <span className="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Per Kilo</span>
+                    ) : product.weight_per_unit > 0 ? (
+                        <div className="flex flex-col items-center">
+                            <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Verpakt</span>
+                            <span className="text-[9px] text-muted-foreground mt-0.5">{product.weight_per_unit}kg/st</span>
+                        </div>
+                    ) : (
+                        <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded border">Vast</span>
+                    )}
+                </div>
                 <div className="hidden md:block col-span-2 text-center">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${product.is_active ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-red-50 text-red-700 ring-red-600/20'}`}>
                         {product.is_active ? 'Actief' : 'Inactief'}
@@ -175,6 +240,7 @@ function ProductRow({ product }: { product: Product }) {
             <div className="flex items-center gap-4 px-3 pb-3 pt-0 md:hidden text-xs text-muted-foreground">
                 <div className="font-bold text-foreground">€{product.price.toFixed(2)}</div>
                 <div>{product.weight_per_unit} {product.unit_label}</div>
+                <div>{product.category}</div>
                 <div className="ml-auto">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium ring-1 ring-inset ${product.is_active ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-red-50 text-red-700 ring-red-600/20'}`}>
                         {product.is_active ? 'Actief' : 'Inactief'}
