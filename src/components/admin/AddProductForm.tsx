@@ -63,7 +63,7 @@ export default function AddProductForm({ products, onSuccess, onCancel }: AddPro
             category: finalCategory,
             price: parseFloat(formData.price),
             unit_label: formData.unit_label,
-            weight_per_unit: productType === 'kilo' ? 1 : parseFloat(formData.weight_per_unit) || 0,
+            weight_per_unit: productType === 'kilo' ? 1 : Math.round((parseFloat(formData.weight_per_unit) || 0) * 1000) / 1000,
             is_price_per_kilo: productType === 'kilo',
             is_active: formData.is_active,
             type_group: 'Algemeen' // Defaulting to Algemeen as requested to remove from UI

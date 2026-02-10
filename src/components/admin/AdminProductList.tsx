@@ -154,7 +154,7 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                                     type="number"
                                     step="0.001"
                                     value={data.weight_per_unit}
-                                    onChange={(e) => setData({ ...data, weight_per_unit: parseFloat(e.target.value) || 0 })}
+                                    onChange={(e) => setData({ ...data, weight_per_unit: Math.round((parseFloat(e.target.value) || 0) * 1000) / 1000 })}
                                     className="h-6 text-right text-[10px] py-0 px-1 w-16"
                                 />
                                 <span className="text-[9px] text-muted-foreground">kg</span>

@@ -80,8 +80,8 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         }
 
         const displayTotalWeight = isPieceBased
-            ? (totalWeight / (item.quantity || 1)).toString()
-            : totalWeight.toString()
+            ? Number((totalWeight / (item.quantity || 1)).toFixed(3)).toString()
+            : Number(totalWeight.toFixed(3)).toString()
 
         setEditingItems(prev => ({
             ...prev,
@@ -89,7 +89,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 totalWeight: totalWeight,
                 displayTotalWeight: displayTotalWeight,
                 units: units,
-                displayUnits: units.map(u => u.toString()),
+                displayUnits: units.map(u => Number(u.toFixed(3)).toString()),
                 isExpanded: false
             }
         }))
@@ -100,12 +100,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             const item = prev[itemId]
             if (!item) return prev
             const num = parseFloat(displayVal.replace(',', '.'))
+            const rawTotal = (isNaN(num) ? 0 : num) * quantity
             return {
                 ...prev,
                 [itemId]: {
                     ...item,
                     displayTotalWeight: displayVal,
-                    totalWeight: (isNaN(num) ? 0 : num) * quantity
+                    totalWeight: Math.round(rawTotal * 1000) / 1000
                 }
             }
         })
@@ -120,7 +121,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
 
             newDisplayUnits[index] = displayVal
             const num = parseFloat(displayVal.replace(',', '.'))
-            newUnits[index] = isNaN(num) ? 0 : num
+            newUnits[index] = isNaN(num) ? 0 : Math.round(num * 1000) / 1000
 
             const newTotal = newUnits.reduce((a, b) => a + b, 0)
             return {
@@ -129,7 +130,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                     ...item,
                     units: newUnits,
                     displayUnits: newDisplayUnits,
-                    totalWeight: newTotal
+                    totalWeight: Math.round(newTotal * 1000) / 1000
                 }
             }
         })
@@ -486,7 +487,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             <Input
                                                                                 type="text"
                                                                                 inputMode="decimal"
-                                                                                value={editData?.displayTotalWeight ?? displayWeight.toString()}
+                                                                                value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
                                                                                 onChange={(e) => {
                                                                                     const val = e.target.value
                                                                                     initEditing(item)
@@ -527,7 +528,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                 <Input
                                                                                     type="text"
                                                                                     inputMode="decimal"
-                                                                                    value={editData?.displayUnits[idx] || unitWeight.toString()}
+                                                                                    value={editData?.displayUnits[idx] || Number(unitWeight.toFixed(3)).toString()}
                                                                                     onChange={(e) => handleUnitWeightChange(item.id, idx, e.target.value)}
                                                                                     className="w-full h-8 text-right text-xs"
                                                                                 />
@@ -649,7 +650,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                         <Input
                                                                                             type="text"
                                                                                             inputMode="decimal"
-                                                                                            value={editData?.displayTotalWeight ?? displayWeight.toString()}
+                                                                                            value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
                                                                                             onChange={(e) => {
                                                                                                 const val = e.target.value
                                                                                                 initEditing(item)
@@ -697,7 +698,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                             <Input
                                                                                                 type="text"
                                                                                                 inputMode="decimal"
-                                                                                                value={editData.displayUnits[idx] || unitWeight.toString()}
+                                                                                                value={editData.displayUnits[idx] || Number(unitWeight.toFixed(3)).toString()}
                                                                                                 onChange={(e) => handleUnitWeightChange(item.id, idx, e.target.value)}
                                                                                                 className="w-full h-8 text-right text-xs"
                                                                                             />

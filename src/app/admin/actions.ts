@@ -300,8 +300,10 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
     const adminSupabase = createAdminClient() as any
 
     const updates: any = {}
-    if (newQuantity !== undefined) updates.quantity = newQuantity
-    if (newWeight !== undefined) updates.actual_weight = newWeight
+    if (newQuantity !== undefined) updates.quantity = Math.round(newQuantity * 1000) / 1000
+    if (newWeight !== undefined) {
+        updates.actual_weight = newWeight === null ? null : Math.round(newWeight * 1000) / 1000
+    }
 
     const { error } = await adminSupabase
         .from('order_items')
@@ -353,7 +355,7 @@ export async function splitOrderItem(itemId: string, quantities: number[]) {
             quantity: qty,
             price_snapshot: original.price_snapshot,
             actual_weight: (original.actual_weight !== null && original.actual_weight !== undefined)
-                ? (original.actual_weight / original.quantity) * qty
+                ? Math.round(((original.actual_weight / original.quantity) * qty) * 1000) / 1000
                 : null
         })))
 
