@@ -466,10 +466,10 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                 <div className="text-[10px] text-muted-foreground">{formatPrice(item.price_snapshot)} / {item.products?.unit_label}</div>
                                                                 {isCheese && (
                                                                     <div className="text-[10px] text-muted-foreground flex flex-col items-end gap-0.5 mt-1">
-                                                                        <span>Standaard: {standardWeight.toFixed(3)} kg/st</span>
+                                                                        <span>Standaard: {Number(standardWeight.toFixed(3))} kg/st</span>
                                                                         {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                             <span className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-1 rounded border border-orange-100">
-                                                                                <Scale className="h-2 w-2" /> Aangepast: {(item.actual_weight / (displayQty || 1)).toFixed(3)}kg/st
+                                                                                <Scale className="h-2 w-2" /> Aangepast: {Number((item.actual_weight / (displayQty || 1)).toFixed(3))}kg/st
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -626,11 +626,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                     {isCheese && (
                                                                         <div className="flex flex-col mt-2 gap-1 w-full max-w-[140px]">
                                                                             <span className="text-[10px] text-muted-foreground bg-muted/50 p-1 rounded border border-border/50">
-                                                                                Standaard: {standardWeight.toFixed(3)} kg/st
+                                                                                Standaard: {Number(standardWeight.toFixed(3))} kg/st
                                                                             </span>
                                                                             {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                                 <span className="text-[10px] text-blue-700 font-bold bg-blue-50 p-1 rounded flex items-center gap-1 justify-center border border-blue-100 shadow-sm">
-                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast: {(item.actual_weight / (displayQty || 1)).toFixed(3)}kg/st
+                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast: {Number((item.actual_weight / (displayQty || 1)).toFixed(3))}kg/st
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -705,7 +705,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                     ))}
                                                                                     <div className="pt-2 border-t flex justify-between items-center text-xs font-bold">
                                                                                         <span>Stuks Totaal</span>
-                                                                                        <span className={`${hasChanged ? 'text-orange-600' : ''}`}>{totalWeight.toFixed(3)} kg</span>
+                                                                                        <span className={`${hasChanged ? 'text-orange-600' : ''}`}>{Number(totalWeight.toFixed(3))} kg</span>
                                                                                     </div>
                                                                                 </div>
                                                                             )}
