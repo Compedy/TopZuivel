@@ -170,6 +170,7 @@ export type OrderWithItems = Order & {
             is_price_per_kilo: boolean
             weight_per_unit: number
             stock_quantity: number
+            sort_order: number | null
         } | null
     })[]
 }

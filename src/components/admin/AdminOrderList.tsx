@@ -271,7 +271,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             doc.text(`Besteldatum: ${orderDate}`, 15, 59)
 
             // Table
-            const tableData = order.order_items.map(item => {
+            const sortedItems = [...order.order_items].sort((a, b) =>
+                (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)
+            )
+
+            const tableData = sortedItems.map(item => {
                 const standardWeight = item.products?.weight_per_unit || 1
                 const weight = item.actual_weight ?? (item.quantity * standardWeight)
                 const isPerKilo = item.products?.is_price_per_kilo
@@ -428,7 +432,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                 <CardContent className="p-0 animate-in slide-in-from-top-2 duration-200">
                                     <div className="md:overflow-x-auto">
                                         <div className="md:hidden space-y-4 p-4">
-                                            {order.order_items.map((item) => {
+                                            {[...order.order_items].sort((a, b) => (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)).map((item) => {
                                                 const isCheese = item.products?.category === 'Kaas'
                                                 const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                                                 const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
@@ -587,7 +591,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y">
-                                                {order.order_items.map((item) => {
+                                                {[...order.order_items].sort((a, b) => (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)).map((item) => {
                                                     const isCheese = item.products?.category === 'Kaas'
                                                     const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                                                     const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
