@@ -441,7 +441,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                 {isCheese && (
                                                                     <div className="text-[10px] text-muted-foreground flex flex-col items-end gap-0.5 mt-1">
                                                                         <span>Standaard: {standardWeight.toFixed(3)} kg/st</span>
-                                                                        {item.actual_weight !== null && (
+                                                                        {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                             <span className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-1 rounded border border-orange-100">
                                                                                 <Scale className="h-2 w-2" /> Aangepast: {(item.actual_weight / (displayQty || 1)).toFixed(3)}kg/st
                                                                             </span>
@@ -462,8 +462,9 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                 inputMode="decimal"
                                                                                 value={editData?.displayTotalWeight ?? displayWeight.toString()}
                                                                                 onChange={(e) => {
+                                                                                    const val = e.target.value
                                                                                     initEditing(item)
-                                                                                    handleWeightChange(item.id, e.target.value, isPieceBased ? displayQty : 1)
+                                                                                    handleWeightChange(item.id, val, isPieceBased ? displayQty : 1)
                                                                                 }}
                                                                                 className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
                                                                             />
@@ -599,7 +600,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                             <span className="text-[10px] text-muted-foreground bg-muted/50 p-1 rounded border border-border/50">
                                                                                 Standaard: {standardWeight.toFixed(3)} kg/st
                                                                             </span>
-                                                                            {item.actual_weight !== null && (
+                                                                            {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                                 <span className="text-[10px] text-blue-700 font-bold bg-blue-50 p-1 rounded flex items-center gap-1 justify-center border border-blue-100 shadow-sm">
                                                                                     <Scale className="h-2.5 w-2.5" /> Aangepast: {(item.actual_weight / (displayQty || 1)).toFixed(3)}kg/st
                                                                                 </span>
@@ -622,8 +623,9 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                                             inputMode="decimal"
                                                                                             value={editData?.displayTotalWeight ?? displayWeight.toString()}
                                                                                             onChange={(e) => {
+                                                                                                const val = e.target.value
                                                                                                 initEditing(item)
-                                                                                                handleWeightChange(item.id, e.target.value, isPieceBased ? displayQty : 1)
+                                                                                                handleWeightChange(item.id, val, isPieceBased ? displayQty : 1)
                                                                                             }}
                                                                                             className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
                                                                                         />

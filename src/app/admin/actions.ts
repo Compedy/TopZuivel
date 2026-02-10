@@ -295,6 +295,8 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
 
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
+    console.log(`[AdminAction] Updating order item ${itemId}: qty=${newQuantity}, weight=${newWeight}`)
+
     const adminSupabase = createAdminClient() as any
 
     const updates: any = {}
@@ -311,6 +313,7 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
         return { success: false, error: error.message }
     }
 
+    console.log(`[AdminAction] Successfully updated order item ${itemId}`)
     revalidatePath('/admin')
     return { success: true }
 }
@@ -349,7 +352,9 @@ export async function splitOrderItem(itemId: string, quantities: number[]) {
             product_id: original.product_id,
             quantity: qty,
             price_snapshot: original.price_snapshot,
-            actual_weight: original.actual_weight ? (original.actual_weight / original.quantity) * qty : null
+            actual_weight: (original.actual_weight !== null && original.actual_weight !== undefined)
+                ? (original.actual_weight / original.quantity) * qty
+                : null
         })))
 
     if (insertError) return { success: false, error: insertError.message }
