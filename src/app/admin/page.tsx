@@ -63,7 +63,7 @@ export default async function AdminPage() {
                             <span className="text-xs md:text-sm">Winkel</span>
                         </Link>
                     </Button>
-                    <span className="text-xs text-muted-foreground hidden lg:inline-block">Admin Status</span>
+                    <span className="text-xs text-muted-foreground hidden lg:inline-block">Admin</span>
                     <form action={adminLogout}>
                         <button type="submit" className="text-xs md:text-sm font-medium text-destructive hover:underline">
                             Uitloggen

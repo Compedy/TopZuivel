@@ -164,7 +164,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                                                 <tr className="bg-background">
                                                                     <th className="py-2 px-4 md:py-2 md:px-6 text-left font-bold">Product</th>
                                                                     <th className="py-2 px-4 md:py-2 md:px-6 text-right font-bold w-[70px] md:w-[100px]">Totaal</th>
-                                                                    <th className="py-2 px-4 md:py-2 md:px-6 text-right font-bold w-[70px] md:w-[100px]">Vorraad</th>
+                                                                    <th className="py-2 px-4 md:py-2 md:px-6 text-right font-bold w-[70px] md:w-[100px]">Voorraad</th>
                                                                     <th className="py-2 px-4 md:py-2 md:px-6 text-right font-bold w-[70px] md:w-[100px]">Productie</th>
                                                                 </tr>
                                                             </thead>
