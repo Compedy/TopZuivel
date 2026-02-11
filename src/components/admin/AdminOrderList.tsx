@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { OrderWithItems, Product } from '@/types'
-import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText } from 'lucide-react'
+import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText, Search } from 'lucide-react'
 import {
     updateOrderItemQuantity,
     updateOrderStatus,
@@ -50,10 +50,23 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     const [saving, setSaving] = useState<string | null>(null)
     const [completing, setCompleting] = useState<string | null>(null)
     const [showCompleted, setShowCompleted] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
 
     const filteredOrders = useMemo(() => {
-        return initialOrders.filter(order => showCompleted ? true : order.status !== 'completed')
-    }, [initialOrders, showCompleted])
+        return initialOrders.filter(order => {
+            const matchesStatus = showCompleted ? true : order.status !== 'completed'
+            if (!matchesStatus) return false
+
+            if (!searchQuery) return true
+
+            const term = searchQuery.toLowerCase()
+            const orderNum = order.order_number?.toString().toLowerCase() || ''
+            const company = order.company_name?.toLowerCase() || ''
+            const email = order.email?.toLowerCase() || ''
+
+            return orderNum.includes(term) || company.includes(term) || email.includes(term)
+        })
+    }, [initialOrders, showCompleted, searchQuery])
 
     const orderToEdit = useMemo(() => {
         return initialOrders.find(o => o.id === editingOrderId)
@@ -376,18 +389,31 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-card p-4 rounded-lg border shadow-sm gap-4">
                 <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-primary" />
                     <h2 className="font-bold text-lg">Bestellingen Beheer</h2>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Label htmlFor="show-completed" className="text-sm text-muted-foreground">Toon voltooid</Label>
-                    <Switch
-                        id="show-completed"
-                        checked={showCompleted}
-                        onCheckedChange={setShowCompleted}
-                    />
+
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Zoek op #, klant of email..."
+                            className="pl-8 h-9 text-xs"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="flex items-center space-x-2 whitespace-nowrap">
+                        <Label htmlFor="show-completed" className="text-sm text-muted-foreground">Toon voltooid</Label>
+                        <Switch
+                            id="show-completed"
+                            checked={showCompleted}
+                            onCheckedChange={setShowCompleted}
+                        />
+                    </div>
                 </div>
             </div>
 
