@@ -88,7 +88,8 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             `).join('')
 
             const adminHtml = `
-                <h1>Nieuwe Bestelling Ontvangen</h1>
+                <h1>Nieuwe Bestelling #${order.order_number} Ontvangen</h1>
+                <p><strong>Ordernummer:</strong> #${order.order_number}</p>
                 <p><strong>Bedrijf:</strong> ${companyName}</p>
                 <p><strong>Email:</strong> ${email}</p>
                 <p><strong>Leverweek:</strong> ${deliveryWeek}</p>
@@ -112,13 +113,13 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 from: `Top Zuivel <${fromEmail}>`,
                 to: adminEmail,
                 replyTo: adminEmail, // As requested: reply-to should be admin-email
-                subject: `Nieuwe Bestelling (Leverweek ${deliveryWeek}): ${companyName}`,
+                subject: `Nieuwe Bestelling #${order.order_number} (Leverweek ${deliveryWeek}): ${companyName}`,
                 html: adminHtml
             })
 
             // 2. Send Confirmation to User
             const userHtml = `
-                <h1>Bevestiging van uw bestelling</h1>
+                <h1>Bevestiging van uw bestelling #${order.order_number}</h1>
                 <p>Beste relatie,</p>
                 <p>Bedankt voor uw bestelling bij Top Zuivel. Hieronder vindt u een overzicht van uw bestelling die zal worden geleverd in <strong>week ${deliveryWeek}</strong>.</p>
                 ${notes ? `<p><strong>Uw opmerking:</strong> ${notes}</p>` : ''}
@@ -142,7 +143,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 from: `Top Zuivel <${fromEmail}>`,
                 to: email, // Send to customer
                 replyTo: adminEmail,
-                subject: `Bevestiging Bestelling Leverweek ${deliveryWeek} - Top Zuivel`,
+                subject: `Bevestiging Bestelling #${order.order_number} Leverweek ${deliveryWeek} - Top Zuivel`,
                 html: userHtml
             })
 
@@ -155,7 +156,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
         // Don't fail the order if email fails, just log it
     }
 
-    return { success: true, orderId: order.id }
+    return { success: true, orderId: order.id, orderNumber: order.order_number }
 }
 
 export async function adminLogin(formData: FormData) {

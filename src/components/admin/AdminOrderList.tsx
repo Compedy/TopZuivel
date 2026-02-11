@@ -399,7 +399,10 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                             >
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold text-lg">{order.company_name || 'Onbekende Klant'}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-lg">{order.company_name || 'Onbekende Klant'}</span>
+                                            <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Order #{order.order_number}</span>
+                                        </div>
                                         <Badge variant={isCompleted ? 'outline' : (order.status === 'open' || order.status === 'pending') ? 'default' : 'secondary'} className={`text-[10px] uppercase ${isCompleted ? 'bg-green-100 text-green-700 border-green-200' : ''}`}>
                                             {order.status === 'completed' ? 'voldaan' : order.status === 'pending' ? 'open' : order.status}
                                         </Badge>
@@ -515,7 +518,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                     </div>
                                                                     <span className="text-xs font-bold text-muted-foreground uppercase">kg Totaal</span>
                                                                     {isPieceBased && (
-                                                                        <div className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
+                                                                        <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
                                                                             ({displayQty} x {standardWeight}kg)
                                                                         </div>
                                                                     )}

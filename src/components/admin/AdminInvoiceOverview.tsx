@@ -122,7 +122,7 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                                         }}
                                                     >
                                                         <Pencil className="h-3 w-3" />
-                                                        Order #{order.id.slice(0, 4)}
+                                                        Order #{order.order_number}
                                                     </Button>
                                                 ))}
                                             </div>

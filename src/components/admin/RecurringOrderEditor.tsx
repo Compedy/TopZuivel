@@ -131,7 +131,7 @@ export default function RecurringOrderEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 border-b">
                     <DialogTitle>{existingOrder ? 'Periodieke Bestelling Bewerken' : 'Nieuwe Periodieke Bestelling'}</DialogTitle>
                 </DialogHeader>

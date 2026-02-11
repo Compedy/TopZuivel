@@ -109,9 +109,9 @@ export default function OrderEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 border-b">
-                    <DialogTitle>Bestelling Bewerken - #{order.id.slice(0, 8)}</DialogTitle>
+                    <DialogTitle>Bestelling Bewerken - #{order.order_number}</DialogTitle>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
