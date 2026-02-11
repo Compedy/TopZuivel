@@ -21,21 +21,25 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
     // Use admin client to bypass RLS for public orders
     const supabase = createAdminClient() as any
 
-    // 1. Create Order
+    // 1. Calculate Delivery Week (Week n+1)
     const getWeek = (d: Date) => {
         d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
         d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
         const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
         return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
     }
-    const currentWeek = getWeek(new Date())
+
+    // Add 7 days to current date to get the delivery week
+    const deliveryDate = new Date()
+    deliveryDate.setDate(deliveryDate.getDate() + 7)
+    const deliveryWeek = getWeek(deliveryDate)
 
     const { data: order, error: orderError } = await (supabase
         .from('orders')
         .insert({
             company_name: companyName,
             email: email,
-            week_number: currentWeek,
+            week_number: deliveryWeek,
             status: 'open'
         })
         .select()
@@ -86,7 +90,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 <h1>Nieuwe Bestelling Ontvangen</h1>
                 <p><strong>Bedrijf:</strong> ${companyName}</p>
                 <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Week:</strong> ${currentWeek}</p>
+                <p><strong>Leverweek:</strong> ${deliveryWeek}</p>
                 
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                     <thead>
@@ -106,7 +110,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 from: `Top Zuivel <${fromEmail}>`,
                 to: adminEmail,
                 replyTo: adminEmail, // As requested: reply-to should be admin-email
-                subject: `Nieuwe Bestelling: ${companyName}`,
+                subject: `Nieuwe Bestelling (Leverweek ${deliveryWeek}): ${companyName}`,
                 html: adminHtml
             })
 
@@ -114,7 +118,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             const userHtml = `
                 <h1>Bevestiging van uw bestelling</h1>
                 <p>Beste relatie,</p>
-                <p>Bedankt voor uw bestelling bij Top Zuivel. Hieronder vindt u een overzicht van uw bestelling voor week ${currentWeek}.</p>
+                <p>Bedankt voor uw bestelling bij Top Zuivel. Hieronder vindt u een overzicht van uw bestelling die zal worden geleverd in <strong>week ${deliveryWeek}</strong>.</p>
                 
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                     <thead>
@@ -135,7 +139,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 from: `Top Zuivel <${fromEmail}>`,
                 to: email, // Send to customer
                 replyTo: adminEmail,
-                subject: `Bevestiging Bestelling Week ${currentWeek} - Top Zuivel`,
+                subject: `Bevestiging Bestelling Leverweek ${deliveryWeek} - Top Zuivel`,
                 html: userHtml
             })
 
