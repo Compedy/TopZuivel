@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Product, RecurringOrder, RecurringOrderItem } from '@/types'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
     Dialog,
     DialogContent,
@@ -43,6 +44,7 @@ export default function RecurringOrderEditor({
     )
     const [searchTerm, setSearchTerm] = useState('')
     const [displayCart, setDisplayCart] = useState<Record<string, string>>({})
+    const [interval, setInterval] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'manual'>(existingOrder?.interval || 'weekly')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Sync state when existingOrder changes or dialog opens
@@ -60,6 +62,7 @@ export default function RecurringOrderEditor({
                 ...acc,
                 [id]: (qty as number).toString()
             }), {}))
+            setInterval(existingOrder?.interval || 'weekly')
             setSearchTerm('')
         }
     }, [open, existingOrder])
@@ -111,7 +114,8 @@ export default function RecurringOrderEditor({
                 company_name: companyName,
                 email: email,
                 price_modifier: parseFloat(priceModifier.replace(',', '.')) || 0,
-                is_active: existingOrder?.is_active ?? true
+                is_active: existingOrder?.is_active ?? true,
+                interval: interval
             },
             items
         )
@@ -134,7 +138,7 @@ export default function RecurringOrderEditor({
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="company">Bedrijfsnaam</Label>
                             <Input
@@ -153,6 +157,28 @@ export default function RecurringOrderEditor({
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                 placeholder="factuur@bedrijf.nl"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="interval">Interval</Label>
+                            <Select
+                                value={interval}
+                                onValueChange={(val: any) => setInterval(val)}
+                            >
+                                <SelectTrigger id="interval">
+                                    <SelectValue placeholder="Selecteer interval" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="weekly">Wekelijks</SelectItem>
+                                    <SelectItem value="bi-weekly">Om de week</SelectItem>
+                                    <SelectItem value="monthly">Eén keer per maand</SelectItem>
+                                    <SelectItem value="manual">Handmatig (nooit automatisch)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground italic">
+                                {interval === 'bi-weekly' && "Elke even week."}
+                                {interval === 'monthly' && "Laatste volle week van de maand."}
+                                {interval === 'manual' && "Wordt nooit automatisch aangemaakt."}
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="modifier" className="flex items-center gap-1">

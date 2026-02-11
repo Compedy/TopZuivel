@@ -101,7 +101,8 @@ export async function upsertRecurringOrder(
                 company_name: order.company_name,
                 email: order.email,
                 price_modifier: order.price_modifier,
-                is_active: order.is_active
+                is_active: order.is_active,
+                interval: order.interval
             })
             .eq('id', orderId)
 
@@ -117,7 +118,8 @@ export async function upsertRecurringOrder(
                 company_name: order.company_name!,
                 email: order.email!,
                 price_modifier: order.price_modifier || 0,
-                is_active: order.is_active ?? true
+                is_active: order.is_active ?? true,
+                interval: order.interval || 'weekly'
             })
             .select()
             .single()
@@ -177,6 +179,20 @@ export async function convertRecurringOrdersToReal() {
     const weekData = getCustomWeekData(new Date())
 
     for (const template of templates) {
+        // Skip if the interval doesn't match this week
+        if (template.interval === 'bi-weekly') {
+            if (weekData.weekNumber % 2 !== 0) continue
+        } else if (template.interval === 'monthly') {
+            const isLastWeek = (date: Date) => {
+                const currentMonth = date.getMonth()
+                const nextWeek = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000)
+                return nextWeek.getMonth() !== currentMonth
+            }
+            if (!isLastWeek(weekData.weekStart)) continue
+        } else if (template.interval === 'manual') {
+            continue
+        }
+
         // Create Order
         const { data: order, error: orderError } = await adminSupabase
             .from('orders')
