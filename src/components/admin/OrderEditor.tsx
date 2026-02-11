@@ -37,6 +37,7 @@ export default function OrderEditor({
     const [weekNumber, setWeekNumber] = useState(order.week_number?.toString() || '')
     const [searchTerm, setSearchTerm] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [localQuantities, setLocalQuantities] = useState<Record<string, string>>({})
 
     // Sync state when order changes or dialog opens
     useEffect(() => {
@@ -46,6 +47,10 @@ export default function OrderEditor({
             setNotes(order.notes || '')
             setWeekNumber(order.week_number?.toString() || '')
             setSearchTerm('')
+            setLocalQuantities(order.order_items.reduce((acc, item) => ({
+                ...acc,
+                [item.id]: item.quantity.toString()
+            }), {}))
         }
     }, [open, order])
 
@@ -97,13 +102,25 @@ export default function OrderEditor({
         }
     }
 
-    const handleQtyChange = async (itemId: string, newQty: number) => {
-        if (newQty < 0) return
+    const handleQtyChange = async (itemId: string, displayVal: string) => {
+        setLocalQuantities(prev => ({ ...prev, [itemId]: displayVal }))
+
+        const newQty = parseFloat(displayVal.replace(',', '.'))
+        if (isNaN(newQty) || newQty < 0) return
+
+        setIsSubmitting(true)
         const result = await updateOrderItemQuantity(itemId, newQty)
+        setIsSubmitting(false)
+
         if (result.success) {
             onSuccess()
         } else {
             alert('Fout bij wijzigen aantal: ' + result.error)
+            // Revert on error
+            const item = order.order_items.find(i => i.id === itemId)
+            if (item) {
+                setLocalQuantities(prev => ({ ...prev, [itemId]: item.quantity.toString() }))
+            }
         }
     }
 
@@ -215,10 +232,11 @@ export default function OrderEditor({
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Input
-                                                    type="number"
+                                                    type="text"
+                                                    inputMode="decimal"
                                                     className="w-16 h-8 text-xs text-right"
-                                                    value={item.quantity}
-                                                    onChange={(e) => handleQtyChange(item.id, parseFloat(e.target.value) || 0)}
+                                                    value={localQuantities[item.id] ?? item.quantity.toString()}
+                                                    onChange={(e) => handleQtyChange(item.id, e.target.value)}
                                                 />
                                                 <Button
                                                     size="sm"

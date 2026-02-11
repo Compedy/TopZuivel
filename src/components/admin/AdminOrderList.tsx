@@ -39,7 +39,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     const router = useRouter()
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
     const [isEditorOpen, setIsEditorOpen] = useState(false)
-    const [orderToEdit, setOrderToEdit] = useState<OrderWithItems | null>(null)
+    const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
     const [editingItems, setEditingItems] = useState<Record<string, {
         totalWeight: number,
         displayTotalWeight: string,
@@ -54,6 +54,10 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     const filteredOrders = useMemo(() => {
         return initialOrders.filter(order => showCompleted ? true : order.status !== 'completed')
     }, [initialOrders, showCompleted])
+
+    const orderToEdit = useMemo(() => {
+        return initialOrders.find(o => o.id === editingOrderId)
+    }, [initialOrders, editingOrderId])
 
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('nl-NL', {
@@ -277,12 +281,14 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
             doc.text(`Email: ${order.email}`, 15, 52)
             doc.text(`Besteldatum: ${orderDate}`, 15, 59)
+            doc.text(`Order #: ${order.order_number}`, 15, 66)
             if (order.notes) {
+                const notesY = 73
                 doc.setFont('helvetica', 'bold')
-                doc.text('Opmerking:', 15, 66)
+                doc.text('Opmerking:', 15, notesY)
                 doc.setFont('helvetica', 'normal')
-                const splitNotes = doc.splitTextToSize(order.notes, 180)
-                doc.text(splitNotes, 40, 66)
+                const splitNotes = doc.splitTextToSize(order.notes, 160)
+                doc.text(splitNotes, 40, notesY)
             }
 
             // Table
@@ -420,7 +426,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                             className="h-8 w-8 p-0"
                                             onClick={(e) => {
                                                 e.stopPropagation()
-                                                setOrderToEdit(order)
+                                                setEditingOrderId(order.id)
                                                 setIsEditorOpen(true)
                                             }}
                                         >
