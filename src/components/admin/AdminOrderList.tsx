@@ -297,29 +297,18 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                 const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                 const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
 
-                let totalPrice;
-                if (isPerKilo) {
-                    totalPrice = weight * item.price_snapshot
-                } else if (isPieceBased && standardWeight > 0) {
-                    totalPrice = weight * (item.price_snapshot / standardWeight)
-                } else {
-                    totalPrice = item.quantity * item.price_snapshot
-                }
-
                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
 
                 return [
                     item.products?.name || 'Onbekend product',
                     `${displayQty} ${item.products?.unit_label || 'st'}`,
-                    `${weight.toFixed(3)} kg`,
-                    formatPrice(item.price_snapshot) + (isPerKilo ? '/kg' : ''),
-                    formatPrice(totalPrice)
+                    `${weight.toFixed(3)} kg`
                 ]
             })
 
             autoTable(doc, {
                 startY: 75,
-                head: [['Product', 'Aantal', 'Gewicht', 'Prijs (één)', 'Totaal']],
+                head: [['Product', 'Aantal', 'Gewicht']],
                 body: tableData,
                 theme: 'striped',
                 headStyles: { fillColor: [44, 62, 80] },
@@ -328,27 +317,10 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
 
             // Totals
             const totalItems = order.order_items.reduce((sum, item) => sum + getDisplayQuantity(item.quantity, item.products?.unit_label), 0)
-            const totalPrice = order.order_items.reduce((sum, item) => {
-                const standardWeight = item.products?.weight_per_unit || 1
-                const weight = item.actual_weight ?? (item.quantity * standardWeight)
-                const isPerKilo = item.products?.is_price_per_kilo
-                const unitLabel = item.products?.unit_label?.toLowerCase() || ''
-                const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-
-                if (isPerKilo) {
-                    return sum + (weight * item.price_snapshot)
-                } else if (isPieceBased && standardWeight > 0) {
-                    return sum + (weight * (item.price_snapshot / standardWeight))
-                } else {
-                    return sum + (item.quantity * item.price_snapshot)
-                }
-            }, 0)
 
             const lastY = (doc as any).lastAutoTable.finalY + 10
             doc.setFont('helvetica', 'bold')
             doc.text(`Totaal aantal items: ${totalItems}`, 15, lastY)
-            doc.setFontSize(14)
-            doc.text(`Totaal bedrag: ${formatPrice(totalPrice)}`, 15, lastY + 10)
 
             // Footer
             doc.setFontSize(8)
