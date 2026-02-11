@@ -5,6 +5,7 @@ CREATE TABLE recurring_orders (
     email TEXT NOT NULL,
     price_modifier DECIMAL(5,2) DEFAULT 0, -- Percentage (e.g., -10.00 for 10% discount, 5.00 for 5% premium)
     is_active BOOLEAN DEFAULT true,
+    interval TEXT DEFAULT 'weekly', -- 'weekly', 'bi-weekly', 'monthly', 'manual'
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
