@@ -7,7 +7,7 @@ import { Resend } from 'resend'
 import { OrderSubmissionSchema } from '@/lib/schemas'
 import { env } from '@/lib/env'
 
-export async function submitOrder(orderDetails: { companyName: string, email: string, cartItems: CartItem[] }) {
+export async function submitOrder(orderDetails: { companyName: string, email: string, cartItems: CartItem[], notes?: string }) {
     // 0. Validate input
     const validated = OrderSubmissionSchema.safeParse(orderDetails)
     if (!validated.success) {
@@ -16,7 +16,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             error: `Ongeldige bestelling: ${validated.error.issues.map(i => i.message).join(', ')}`
         }
     }
-    const { companyName, email, cartItems } = validated.data
+    const { companyName, email, cartItems, notes } = validated.data
 
     // Use admin client to bypass RLS for public orders
     const supabase = createAdminClient() as any
@@ -40,7 +40,8 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             company_name: companyName,
             email: email,
             week_number: deliveryWeek,
-            status: 'open'
+            status: 'open',
+            notes: notes || null
         })
         .select()
         .single())
@@ -91,6 +92,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 <p><strong>Bedrijf:</strong> ${companyName}</p>
                 <p><strong>Email:</strong> ${email}</p>
                 <p><strong>Leverweek:</strong> ${deliveryWeek}</p>
+                ${notes ? `<p><strong>Opmerking:</strong> ${notes}</p>` : ''}
                 
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                     <thead>
@@ -119,6 +121,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
                 <h1>Bevestiging van uw bestelling</h1>
                 <p>Beste relatie,</p>
                 <p>Bedankt voor uw bestelling bij Top Zuivel. Hieronder vindt u een overzicht van uw bestelling die zal worden geleverd in <strong>week ${deliveryWeek}</strong>.</p>
+                ${notes ? `<p><strong>Uw opmerking:</strong> ${notes}</p>` : ''}
                 
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                     <thead>

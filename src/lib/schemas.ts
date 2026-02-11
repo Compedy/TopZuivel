@@ -27,6 +27,7 @@ export const OrderSubmissionSchema = z.object({
   companyName: z.string().min(1, "Bedrijfsnaam is verplicht"),
   email: z.string().email("Ongeldig e-mailadres"),
   cartItems: z.array(CartItemSchema).min(1, "Winkelwagen mag niet leeg zijn"),
+  notes: z.string().optional(),
 });
 
 export type OrderSubmission = z.infer<typeof OrderSubmissionSchema>;

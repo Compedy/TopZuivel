@@ -59,6 +59,7 @@ export interface Database {
                     created_at: string
                     week_number: number | null
                     status: string
+                    notes: string | null
                 }
                 Insert: {
                     id?: string
@@ -67,6 +68,7 @@ export interface Database {
                     created_at?: string
                     week_number?: number | null
                     status?: string
+                    notes?: string | null
                 }
                 Update: {
                     id?: string
@@ -75,6 +77,7 @@ export interface Database {
                     created_at?: string
                     week_number?: number | null
                     status?: string
+                    notes?: string | null
                 }
             }
             order_items: {

@@ -270,6 +270,13 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
             doc.text(`Email: ${order.email}`, 15, 52)
             doc.text(`Besteldatum: ${orderDate}`, 15, 59)
+            if (order.notes) {
+                doc.setFont('helvetica', 'bold')
+                doc.text('Opmerking:', 15, 66)
+                doc.setFont('helvetica', 'normal')
+                const splitNotes = doc.splitTextToSize(order.notes, 180)
+                doc.text(splitNotes, 40, 66)
+            }
 
             // Table
             const sortedItems = [...order.order_items].sort((a, b) =>
@@ -422,15 +429,33 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                     </div>
                                     <span className="text-xs text-muted-foreground">{order.email}</span>
                                 </div>
-                                <div className="flex flex-col items-end gap-2 text-right">
+                                <div className="flex flex-col items-end gap-1 text-right">
                                     <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                                         {formatDate(order.created_at)}
                                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                     </span>
+                                    {order.notes && !isExpanded && (
+                                        <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
+                                            Heeft opmerking
+                                        </Badge>
+                                    )}
                                 </div>
                             </CardHeader>
                             {isExpanded && (
                                 <CardContent className="p-0 animate-in slide-in-from-top-2 duration-200">
+                                    {order.notes && (
+                                        <div className="bg-yellow-50/50 p-4 border-b border-yellow-100">
+                                            <div className="flex items-start gap-2">
+                                                <FileText className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+                                                <div className="space-y-1">
+                                                    <span className="text-xs font-bold text-yellow-800 uppercase tracking-wider">Opmerking van klant:</span>
+                                                    <p className="text-sm text-yellow-900 leading-relaxed font-medium">
+                                                        {order.notes}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="md:overflow-x-auto">
                                         <div className="md:hidden space-y-4 p-4">
                                             {[...order.order_items].sort((a, b) => (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)).map((item) => {

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { CartItem } from './ShopInterface'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
     Dialog,
@@ -36,6 +37,7 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
     const [success, setSuccess] = useState(false)
     const [companyName, setCompanyName] = useState('')
     const [email, setEmail] = useState('')
+    const [notes, setNotes] = useState('')
 
     const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0)
 
@@ -57,13 +59,15 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
             const result = await submitOrder({
                 companyName,
                 email,
-                cartItems
+                cartItems,
+                notes: notes.trim() || undefined
             })
             if (result.success) {
                 setSuccess(true)
                 onSubmitSuccess()
                 setCompanyName('')
                 setEmail('')
+                setNotes('')
                 // Keep modal open for a moment to show success message
             } else {
                 alert('Er ging iets mis: ' + result.error)
@@ -165,10 +169,20 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
                                         type="email"
                                         value={email}
                                         onChange={(e) => e?.target && setEmail(e.target.value)}
-                                        placeholder="bestellingen@uwdomein.nl"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="notes">Opmerking / Speciaal verzoek (Optioneel)</Label>
+                                    <Textarea
+                                        id="notes"
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder="Bijv. Levering op woensdag voor 10:00 uur..."
+                                        className="resize-none"
                                     />
                                 </div>
                             </div>
+
 
                             <div className="bg-yellow-50 p-3 rounded-md text-sm text-yellow-800 border border-yellow-200 mt-4">
                                 Let op: Bij gewichtsartikelen is de prijs een schatting. De factuur wordt gebaseerd op het werkelijke gewicht.
