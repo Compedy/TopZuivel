@@ -105,7 +105,7 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
             )}
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto sm:top-[50%] sm:translate-y-[-50%] top-[1rem] translate-y-0">
                     <DialogHeader>
                         <DialogTitle>Bestelling Bevestigen</DialogTitle>
                         <DialogDescription>
