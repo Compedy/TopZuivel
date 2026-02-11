@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { updateProduct, deleteProduct } from '@/app/admin/actions'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, Edit2, Save, X, Trash2 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2, Plus, Edit2, Save, X, Trash2, FileText } from 'lucide-react'
 import AddProductForm from './AddProductForm'
 
 interface AdminProductListProps {
@@ -70,7 +71,8 @@ function ProductRow({ product, categories }: { product: Product, categories: str
         weight_per_unit: product.weight_per_unit,
         is_active: product.is_active,
         category: product.category,
-        is_price_per_kilo: product.is_price_per_kilo
+        is_price_per_kilo: product.is_price_per_kilo,
+        description: product.description || ''
     })
 
     const handleSave = async () => {
@@ -172,7 +174,16 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                             {data.is_active ? 'Actief' : 'Inactief'}
                         </Button>
                     </div>
-                    <div className="flex md:justify-end gap-1.5 md:col-span-2 items-end md:items-center col-span-2">
+                    <div className="md:col-span-12 space-y-1 mt-2">
+                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Omschrijving</label>
+                        <Textarea
+                            value={data.description}
+                            onChange={(e) => setData({ ...data, description: e.target.value })}
+                            placeholder="Product omschrijving..."
+                            className="h-20 text-xs px-2 py-1"
+                        />
+                    </div>
+                    <div className="flex md:justify-end gap-1.5 md:col-span-12 items-end md:items-center col-span-2 pt-2 border-t mt-2">
                         <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-8 px-2 text-xs" onClick={() => setIsEditing(false)} disabled={loading}>
                             <X className="h-4 w-4 mr-1 md:hidden" /> Annuleren
                         </Button>
@@ -236,7 +247,6 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                 </div>
             </div>
 
-            {/* Mobile info row */}
             <div className="flex items-center gap-4 px-3 pb-3 pt-0 md:hidden text-xs text-muted-foreground">
                 <div className="font-bold text-foreground">€{product.price.toFixed(2)}</div>
                 <div>{product.weight_per_unit} {product.unit_label}</div>
@@ -247,6 +257,16 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                     </span>
                 </div>
             </div>
+            {product.description && (
+                <div className="px-3 pb-3 -mt-1">
+                    <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground bg-muted/20 p-2 rounded-md border border-muted-foreground/10">
+                        <FileText className="h-3 w-3 mt-0.5 shrink-0" />
+                        <p className="line-clamp-2 md:line-clamp-none italic">
+                            {product.description}
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

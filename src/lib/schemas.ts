@@ -13,6 +13,7 @@ export const ProductSchema = z.object({
   is_active: z.boolean().default(true),
   sort_order: z.number().nullable().optional(),
   stock_quantity: z.number().default(0),
+  description: z.string().nullable().optional(),
 });
 
 // Cart Item Schema

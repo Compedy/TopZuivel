@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { addProduct } from '@/app/admin/actions'
@@ -28,7 +29,8 @@ export default function AddProductForm({ products, onSuccess, onCancel }: AddPro
         price: '',
         unit_label: 'stuk',
         weight_per_unit: '',
-        is_active: true
+        is_active: true,
+        description: ''
     })
 
     const categories = useMemo(() => {
@@ -66,6 +68,7 @@ export default function AddProductForm({ products, onSuccess, onCancel }: AddPro
             weight_per_unit: productType === 'kilo' ? 1 : Math.round((parseFloat(formData.weight_per_unit) || 0) * 1000) / 1000,
             is_price_per_kilo: productType === 'kilo',
             is_active: formData.is_active,
+            description: formData.description.trim() || null,
             type_group: 'Algemeen' // Defaulting to Algemeen as requested to remove from UI
         } as any)
 
@@ -228,7 +231,19 @@ export default function AddProductForm({ products, onSuccess, onCancel }: AddPro
                     />
                     <Label htmlFor="is_active">Actief in winkel</Label>
                 </div>
+
+                <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="description">Omschrijving (Optioneel)</Label>
+                    <Textarea
+                        id="description"
+                        value={formData.description}
+                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Bijv. Een heerlijke jonge kaas uit de regio..."
+                        className="h-24 resize-none"
+                    />
+                </div>
             </div>
+
 
             <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>

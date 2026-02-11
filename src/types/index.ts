@@ -23,6 +23,7 @@ export interface Database {
                     is_active: boolean
                     sort_order: number | null
                     stock_quantity: number
+                    description: string | null
                 }
                 Insert: {
                     id?: string
@@ -36,6 +37,7 @@ export interface Database {
                     is_active?: boolean
                     sort_order?: number | null
                     stock_quantity?: number
+                    description?: string | null
                 }
                 Update: {
                     id?: string
@@ -49,6 +51,7 @@ export interface Database {
                     is_active?: boolean
                     sort_order?: number | null
                     stock_quantity?: number
+                    description?: string | null
                 }
             }
             orders: {
