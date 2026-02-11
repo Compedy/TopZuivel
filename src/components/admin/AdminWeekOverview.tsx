@@ -142,6 +142,22 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                             return sections.map((section: { title: string, items: SummedProduct[] }, sIndex: number) => {
                                                 if (section.items.length === 0) return null
 
+                                                // Aggregation logic for vacuumed products
+                                                const isVacuumed = section.title === 'Gevacumeerde Kaas'
+                                                const aggregation: Record<string, number> = {}
+                                                if (isVacuumed) {
+                                                    section.items.forEach(p => {
+                                                        const baseName = p.name
+                                                            .replace(/\d+g/gi, '')
+                                                            .replace(/\d+kg/gi, '')
+                                                            .replace(/\(gevacumeerd\)/gi, '')
+                                                            .replace(/gevacumeerd/gi, '')
+                                                            .trim()
+                                                        const weight = p.totalQuantity * (p.weight_per_unit || 0)
+                                                        aggregation[baseName] = (aggregation[baseName] || 0) + weight
+                                                    })
+                                                }
+
                                                 return (
                                                     <div key={section.title} className={cn(sIndex > 0 ? "mt-4" : "")}>
                                                         <div className="bg-muted/40 px-4 py-1.5 md:px-6 md:py-2 flex items-center justify-between border-y">
@@ -150,6 +166,21 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                                                 {section.items.length} {section.items.length === 1 ? 'item' : 'items'}
                                                             </span>
                                                         </div>
+
+                                                        {isVacuumed && Object.keys(aggregation).length > 0 && (
+                                                            <div className="px-4 py-3 md:px-6 md:py-4 bg-primary/5 border-b space-y-2">
+                                                                <h5 className="text-[10px] font-bold uppercase text-primary/60">Productie Totaal (Gewicht)</h5>
+                                                                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                                                    {Object.entries(aggregation).map(([name, weight]) => (
+                                                                        <div key={name} className="flex items-baseline gap-2">
+                                                                            <span className="text-xs font-semibold">{name}:</span>
+                                                                            <span className="text-sm font-black text-primary">{weight.toFixed(2)} kg</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         <table className="w-full text-sm">
                                                             <thead className="text-muted-foreground border-b text-[10px] md:text-xs uppercase">
                                                                 <tr className="bg-background">
