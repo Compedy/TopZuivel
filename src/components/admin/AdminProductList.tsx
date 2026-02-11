@@ -10,12 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Plus, Edit2, Save, X, Trash2, FileText } from 'lucide-react'
 import AddProductForm from './AddProductForm'
+import { useRouter } from 'next/navigation'
 
 interface AdminProductListProps {
     initialProducts: Product[]
 }
 
 export default function AdminProductList({ initialProducts }: AdminProductListProps) {
+    const router = useRouter()
     const [isAdding, setIsAdding] = useState(false)
 
     // Extract unique categories for the editors
@@ -40,7 +42,10 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
             {isAdding && (
                 <AddProductForm
                     products={initialProducts}
-                    onSuccess={() => setIsAdding(false)}
+                    onSuccess={() => {
+                        setIsAdding(false)
+                        router.refresh()
+                    }}
                     onCancel={() => setIsAdding(false)}
                 />
             )}
@@ -64,6 +69,7 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
 }
 
 function ProductRow({ product, categories }: { product: Product, categories: string[] }) {
+    const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState({
@@ -80,6 +86,7 @@ function ProductRow({ product, categories }: { product: Product, categories: str
         const result = await updateProduct(product.id, data)
         if (result.success) {
             setIsEditing(false)
+            router.refresh() // Added router.refresh()
         } else {
             alert('Fout bij opslaan: ' + result.error)
         }
@@ -93,6 +100,8 @@ function ProductRow({ product, categories }: { product: Product, categories: str
         const result = await deleteProduct(product.id)
         if (!result.success) {
             alert('Fout bij verwijderen: ' + result.error)
+        } else {
+            router.refresh()
         }
         setLoading(false)
     }

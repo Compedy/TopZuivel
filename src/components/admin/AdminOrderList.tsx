@@ -183,6 +183,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             setEditingItems(prev => {
                 const newState = { ...prev }
                 delete newState[itemId]
+                router.refresh()
                 return newState
             })
         } else {
@@ -220,6 +221,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             setEditingItems(prev => {
                 const newState = { ...prev }
                 delete newState[itemId]
+                router.refresh()
                 return newState
             })
         } else {
@@ -354,6 +356,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             if (result.success) {
                 await generatePDF(order)
                 setExpandedOrder(null)
+                router.refresh()
             } else {
                 alert('Fout bij afronden bestelling: ' + result.error)
             }
