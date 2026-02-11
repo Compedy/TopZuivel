@@ -13,6 +13,7 @@ export interface CustomerMonthlyTotal {
         totalLinePrice: number
     }[]
     grandTotal: number
+    orders: OrderWithItems[]
 }
 
 export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products: Product[]): Record<string, CustomerMonthlyTotal[]> {
@@ -94,7 +95,8 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
                 mostUsedCompanyName,
                 month,
                 items,
-                grandTotal
+                grandTotal,
+                orders: customer.orders
             }
         })
     })

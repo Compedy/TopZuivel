@@ -31,23 +31,14 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
         })
 
         if (!hasCurrentWeek) {
-            groups.unshift({
+            groups.push({
                 weekData: currentWeekData,
                 orders: []
             })
-        } else {
-            // Move current week to top if it's not already
-            const currentIndex = groups.findIndex(g => {
-                const gWeek = g.weekData
-                return `${gWeek.year}-W${gWeek.weekNumber}` === currentKey
-            })
-            if (currentIndex > 0) {
-                const [current] = groups.splice(currentIndex, 1)
-                groups.unshift(current)
-            }
         }
 
-        return groups
+        // Always sort by week start descending to ensure future weeks are on top
+        return groups.sort((a, b) => b.weekData.weekStart.getTime() - a.weekData.weekStart.getTime())
     }, [orders])
 
     // Always expand the first week by default

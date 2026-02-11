@@ -8,6 +8,10 @@ import { groupOrdersByMonthAndCustomer, CustomerMonthlyTotal } from '@/lib/invoi
 import { ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import OrderEditor from './OrderEditor'
+import { useRouter } from 'next/navigation'
+import { Pencil } from 'lucide-react'
+import { OrderWithItems } from '@/types'
 
 interface AdminInvoiceOverviewProps {
     products: Product[]
@@ -15,8 +19,11 @@ interface AdminInvoiceOverviewProps {
 }
 
 export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceOverviewProps) {
+    const router = useRouter()
     const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({})
     const [copiedId, setCopiedId] = useState<string | null>(null)
+    const [isEditorOpen, setIsEditorOpen] = useState(false)
+    const [orderToEdit, setOrderToEdit] = useState<OrderWithItems | null>(null)
 
     const monthlyData = useMemo(() => {
         const grouped = groupOrdersByMonthAndCustomer(orders, products)
@@ -102,6 +109,23 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                                     {copiedId === id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                                                 </Button>
                                             </div>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {customer.orders.map(order => (
+                                                    <Button
+                                                        key={order.id}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 text-[10px] gap-1"
+                                                        onClick={() => {
+                                                            setOrderToEdit(order)
+                                                            setIsEditorOpen(true)
+                                                        }}
+                                                    >
+                                                        <Pencil className="h-3 w-3" />
+                                                        Order #{order.id.slice(0, 4)}
+                                                    </Button>
+                                                ))}
+                                            </div>
                                         </CardHeader>
                                         <CardContent className="pt-4">
                                             <div className="space-y-2">
@@ -131,6 +155,18 @@ Totaal: ${formatPrice(customer.grandTotal)}
                 <div className="p-12 text-center text-muted-foreground border-2 border-dashed rounded-lg">
                     Geen bestellingen gevonden voor facturatie.
                 </div>
+            )}
+
+            {orderToEdit && (
+                <OrderEditor
+                    open={isEditorOpen}
+                    onOpenChange={setIsEditorOpen}
+                    order={orderToEdit}
+                    products={products}
+                    onSuccess={() => {
+                        router.refresh()
+                    }}
+                />
             )}
         </div>
     )

@@ -403,6 +403,70 @@ export async function updateOrderStatus(orderId: string, status: string) {
     return { success: true }
 }
 
+export async function updateOrderMetadata(orderId: string, updates: { company_name?: string | null, email?: string | null, notes?: string | null, week_number?: number | null }) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('orders')
+        .update(updates)
+        .eq('id', orderId)
+
+    if (error) {
+        console.error('Update order metadata error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
+export async function addOrderItem(orderId: string, productId: string, quantity: number, priceSnapshot: number) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('order_items')
+        .insert({
+            order_id: orderId,
+            product_id: productId,
+            quantity: Math.round(quantity * 1000) / 1000,
+            price_snapshot: priceSnapshot
+        })
+
+    if (error) {
+        console.error('Add order item error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
+export async function removeOrderItem(itemId: string) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('order_items')
+        .delete()
+        .eq('id', itemId)
+
+    if (error) {
+        console.error('Remove order item error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
 export async function updateStockLevels(updates: { id: string, stock_quantity: number }[]) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'

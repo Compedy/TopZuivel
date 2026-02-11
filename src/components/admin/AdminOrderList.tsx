@@ -7,14 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { OrderWithItems } from '@/types'
+import { OrderWithItems, Product } from '@/types'
 import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText } from 'lucide-react'
 import { updateOrderItemQuantity, updateOrderStatus, splitOrderItem } from '@/app/admin/actions'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import OrderEditor from './OrderEditor'
+import { Pencil } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface AdminOrderListProps {
     initialOrders: OrderWithItems[]
+    products: Product[]
 }
 
 const getDisplayQuantity = (qty: number, unit?: string) => {
@@ -25,8 +29,11 @@ const getDisplayQuantity = (qty: number, unit?: string) => {
     return qty
 }
 
-export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
+export default function AdminOrderList({ initialOrders, products }: AdminOrderListProps) {
+    const router = useRouter()
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+    const [isEditorOpen, setIsEditorOpen] = useState(false)
+    const [orderToEdit, setOrderToEdit] = useState<OrderWithItems | null>(null)
     const [editingItems, setEditingItems] = useState<Record<string, {
         totalWeight: number,
         displayTotalWeight: string,
@@ -429,16 +436,32 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                     </div>
                                     <span className="text-xs text-muted-foreground">{order.email}</span>
                                 </div>
-                                <div className="flex flex-col items-end gap-1 text-right">
-                                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                        {formatDate(order.created_at)}
-                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                    </span>
-                                    {order.notes && !isExpanded && (
-                                        <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
-                                            Heeft opmerking
-                                        </Badge>
+                                <div className="flex items-center gap-4">
+                                    {!isCompleted && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                setOrderToEdit(order)
+                                                setIsEditorOpen(true)
+                                            }}
+                                        >
+                                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                        </Button>
                                     )}
+                                    <div className="flex flex-col items-end gap-1 text-right">
+                                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                            {formatDate(order.created_at)}
+                                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                        </span>
+                                        {order.notes && !isExpanded && (
+                                            <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
+                                                Heeft opmerking
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
                             </CardHeader>
                             {isExpanded && (
@@ -861,6 +884,18 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                         </Card>
                     )
                 })
+            )}
+
+            {orderToEdit && (
+                <OrderEditor
+                    open={isEditorOpen}
+                    onOpenChange={setIsEditorOpen}
+                    order={orderToEdit}
+                    products={products}
+                    onSuccess={() => {
+                        router.refresh()
+                    }}
+                />
             )}
         </div>
     )
