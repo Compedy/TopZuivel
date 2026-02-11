@@ -67,12 +67,12 @@ function ProductRow({ product, categories }: { product: Product, categories: str
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState({
+        name: product.name,
         price: product.price,
         weight_per_unit: product.weight_per_unit,
         is_active: product.is_active,
         category: product.category,
-        is_price_per_kilo: product.is_price_per_kilo,
-        description: product.description || ''
+        is_price_per_kilo: product.is_price_per_kilo
     })
 
     const handleSave = async () => {
@@ -100,21 +100,31 @@ function ProductRow({ product, categories }: { product: Product, categories: str
     if (isEditing) {
         return (
             <div className="p-3 bg-accent/10 border-l-4 border-primary animate-in fade-in space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 md:items-center">
-                <div className="md:col-span-4 flex flex-col gap-1">
-                    <div className="text-sm font-bold truncate">{product.name}</div>
-                    <Select
-                        value={data.category}
-                        onValueChange={(val: string) => setData({ ...data, category: val })}
-                    >
-                        <SelectTrigger className="h-7 text-[10px]">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {categories.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                <div className="md:col-span-4 flex flex-col gap-2">
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Product Naam</label>
+                        <Input
+                            value={data.name}
+                            onChange={(e) => setData({ ...data, name: e.target.value })}
+                            className="h-8 text-xs font-bold"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Categorie</label>
+                        <Select
+                            value={data.category}
+                            onValueChange={(val: string) => setData({ ...data, category: val })}
+                        >
+                            <SelectTrigger className="h-8 text-[10px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories.map(cat => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:contents">
                     <div className="space-y-1 md:col-span-2">
@@ -173,15 +183,6 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                         >
                             {data.is_active ? 'Actief' : 'Inactief'}
                         </Button>
-                    </div>
-                    <div className="md:col-span-12 space-y-1 mt-2">
-                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Omschrijving</label>
-                        <Textarea
-                            value={data.description}
-                            onChange={(e) => setData({ ...data, description: e.target.value })}
-                            placeholder="Product omschrijving..."
-                            className="h-20 text-xs px-2 py-1"
-                        />
                     </div>
                     <div className="flex md:justify-end gap-1.5 md:col-span-12 items-end md:items-center col-span-2 pt-2 border-t mt-2">
                         <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-8 px-2 text-xs" onClick={() => setIsEditing(false)} disabled={loading}>
@@ -257,16 +258,6 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                     </span>
                 </div>
             </div>
-            {product.description && (
-                <div className="px-3 pb-3 -mt-1">
-                    <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground bg-muted/20 p-2 rounded-md border border-muted-foreground/10">
-                        <FileText className="h-3 w-3 mt-0.5 shrink-0" />
-                        <p className="line-clamp-2 md:line-clamp-none italic">
-                            {product.description}
-                        </p>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

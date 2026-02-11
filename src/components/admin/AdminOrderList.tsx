@@ -9,7 +9,13 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { OrderWithItems, Product } from '@/types'
 import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText } from 'lucide-react'
-import { updateOrderItemQuantity, updateOrderStatus, splitOrderItem } from '@/app/admin/actions'
+import {
+    updateOrderItemQuantity,
+    updateOrderStatus,
+    updateOrderMetadata,
+    addOrderItem,
+    removeOrderItem
+} from '@/app/admin/actions'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import OrderEditor from './OrderEditor'
@@ -102,18 +108,17 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
         }))
     }
 
-    const handleWeightChange = (itemId: string, displayVal: string, quantity: number) => {
+    const handleWeightChange = (itemId: string, displayVal: string) => {
         setEditingItems(prev => {
             const item = prev[itemId]
             if (!item) return prev
             const num = parseFloat(displayVal.replace(',', '.'))
-            const rawTotal = (isNaN(num) ? 0 : num) * quantity
             return {
                 ...prev,
                 [itemId]: {
                     ...item,
                     displayTotalWeight: displayVal,
-                    totalWeight: Math.round(rawTotal * 1000) / 1000
+                    totalWeight: isNaN(num) ? 0 : Math.round(num * 1000) / 1000
                 }
             }
         })
@@ -194,28 +199,21 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
 
         const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel?.toLowerCase() || '')
         let result;
-        if (editData.isExpanded) {
-            // Persist as separate records
-            const quantities = editData.units.map(u => u / (standardWeight || 1))
-            result = await splitOrderItem(itemId, quantities)
+        if (isPieceBased) {
+            // For piece based items, we keep quantity (pieces) the same
+            // and store the total weight in actual_weight
+            const item = filteredOrders.flatMap(o => o.order_items).find(i => i.id === itemId)
+            const pieces = item ? Math.round(item.quantity) : 1
+
+            // If the manually entered weight is equal to standard, store null instead
+            const standardTotalWeight = pieces * (standardWeight || 1)
+            const isActuallyDifferent = Math.abs(editData.totalWeight - standardTotalWeight) > 0.0001
+            const weightToStore = isActuallyDifferent ? editData.totalWeight : null
+
+            result = await updateOrderItemQuantity(itemId, pieces, weightToStore)
         } else {
-            // Standard update
-            if (isPieceBased) {
-                // For piece based items, we keep quantity (pieces) the same
-                // and store the total weight in actual_weight
-                const item = filteredOrders.flatMap(o => o.order_items).find(i => i.id === itemId)
-                const pieces = item ? Math.round(item.quantity) : 1
-
-                // If the manually entered weight is equal to standard, store null instead
-                const standardTotalWeight = pieces * (standardWeight || 1)
-                const isActuallyDifferent = Math.abs(editData.totalWeight - standardTotalWeight) > 0.0001
-                const weightToStore = isActuallyDifferent ? editData.totalWeight : null
-
-                result = await updateOrderItemQuantity(itemId, pieces, weightToStore)
-            } else {
-                // For kg items, quantity IS the weight
-                result = await updateOrderItemQuantity(itemId, editData.totalWeight)
-            }
+            // For kg items, quantity IS the weight
+            result = await updateOrderItemQuantity(itemId, editData.totalWeight)
         }
 
         if (result.success) {
@@ -500,62 +498,28 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
 
                                                         {isWeightAdjustable ? (
                                                             <div className="space-y-2">
-                                                                {!editData?.isExpanded ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="relative flex-1">
-                                                                            <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                                            <Input
-                                                                                type="text"
-                                                                                inputMode="decimal"
-                                                                                value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value
-                                                                                    initEditing(item)
-                                                                                    handleWeightChange(item.id, val, isPieceBased ? displayQty : 1)
-                                                                                }}
-                                                                                className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
-                                                                            />
-                                                                        </div>
-                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
-                                                                        {isPieceBased && (
-                                                                            <div className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
-                                                                                ({formatPrice(item.price_snapshot)} /st)
-                                                                            </div>
-                                                                        )}
-                                                                        {isPieceBased && item.quantity >= 1 && (
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="icon"
-                                                                                className="h-10 w-10 text-blue-600 border-blue-200"
-                                                                                onClick={() => {
-                                                                                    initEditing(item)
-                                                                                    setTimeout(() => toggleUnitsExpand(item.id), 0)
-                                                                                }}
-                                                                            >
-                                                                                <ListTree className="h-4 w-4" />
-                                                                            </Button>
-                                                                        )}
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="relative flex-1">
+                                                                        <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                                        <Input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value
+                                                                                initEditing(item)
+                                                                                handleWeightChange(item.id, val)
+                                                                            }}
+                                                                            className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
+                                                                        />
                                                                     </div>
-                                                                ) : (
-                                                                    <div className="bg-muted/50 p-2 rounded-md space-y-2 border shadow-inner">
-                                                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase text-muted-foreground px-1">
-                                                                            <span>Gewicht per stuk (kg)</span>
-                                                                            <button onClick={() => toggleUnitsExpand(item.id)} className="text-blue-600 underline">Sluiten</button>
+                                                                    <span className="text-xs font-bold text-muted-foreground uppercase">kg Totaal</span>
+                                                                    {isPieceBased && (
+                                                                        <div className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
+                                                                            ({displayQty} x {standardWeight}kg)
                                                                         </div>
-                                                                        {editData.units.map((unitWeight, idx) => (
-                                                                            <div key={idx} className="flex items-center gap-2">
-                                                                                <span className="text-[10px] w-4 text-muted-foreground">#{idx + 1}</span>
-                                                                                <Input
-                                                                                    type="text"
-                                                                                    inputMode="decimal"
-                                                                                    value={editData?.displayUnits[idx] || Number(unitWeight.toFixed(3)).toString()}
-                                                                                    onChange={(e) => handleUnitWeightChange(item.id, idx, e.target.value)}
-                                                                                    className="w-full h-8 text-right text-xs"
-                                                                                />
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
+                                                                    )}
+                                                                </div>
                                                                 <div className="flex justify-between items-center border-t pt-2">
                                                                     <div className="text-xs font-bold text-primary">Subtotaal: {formatPrice(rowTotalPrice)}</div>
                                                                     <div className="flex gap-2">
@@ -663,73 +627,28 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                 <div className="flex flex-col items-end gap-2">
                                                                     {isWeightAdjustable ? (
                                                                         <div className="flex flex-col items-end gap-1">
-                                                                            {!editData?.isExpanded ? (
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <div className="relative group">
-                                                                                        <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                                                        <Input
-                                                                                            type="text"
-                                                                                            inputMode="decimal"
-                                                                                            value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
-                                                                                            onChange={(e) => {
-                                                                                                const val = e.target.value
-                                                                                                initEditing(item)
-                                                                                                handleWeightChange(item.id, val, isPieceBased ? displayQty : 1)
-                                                                                            }}
-                                                                                            className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
-                                                                                        />
-                                                                                    </div>
-                                                                                    <span className="text-sm font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
-                                                                                    {isPieceBased && (
-                                                                                        <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
-                                                                                            {formatPrice(item.price_snapshot)} /st
-                                                                                        </div>
-                                                                                    )}
-
-                                                                                    {isPieceBased && item.quantity >= 1 && (
-                                                                                        <Button
-                                                                                            variant="ghost"
-                                                                                            size="icon"
-                                                                                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                            title="Splits per stuk"
-                                                                                            onClick={() => {
-                                                                                                initEditing(item)
-                                                                                                setTimeout(() => toggleUnitsExpand(item.id), 0)
-                                                                                            }}
-                                                                                        >
-                                                                                            <ListTree className="h-4 w-4" />
-                                                                                        </Button>
-                                                                                    )}
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="relative group">
+                                                                                    <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                                                    <Input
+                                                                                        type="text"
+                                                                                        inputMode="decimal"
+                                                                                        value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
+                                                                                        onChange={(e) => {
+                                                                                            const val = e.target.value
+                                                                                            initEditing(item)
+                                                                                            handleWeightChange(item.id, val)
+                                                                                        }}
+                                                                                        className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
+                                                                                    />
                                                                                 </div>
-                                                                            ) : (
-                                                                                <div className="bg-muted/50 p-2 rounded-md space-y-2 border border-border shadow-inner min-w-[200px]">
-                                                                                    <div className="text-[10px] font-bold uppercase text-muted-foreground text-left px-1 flex justify-between gap-10">
-                                                                                        <span>Gewicht per stuk (kg)</span>
-                                                                                        <button
-                                                                                            onClick={() => toggleUnitsExpand(item.id)}
-                                                                                            className="hover:underline text-blue-600 capitalize text-[10px]"
-                                                                                        >
-                                                                                            Inklappen
-                                                                                        </button>
+                                                                                <span className="text-sm font-bold text-muted-foreground uppercase">kg Totaal</span>
+                                                                                {isPieceBased && (
+                                                                                    <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
+                                                                                        ({displayQty} x {standardWeight}kg)
                                                                                     </div>
-                                                                                    {editData.units.map((unitWeight, idx) => (
-                                                                                        <div key={idx} className="flex items-center gap-2">
-                                                                                            <span className="text-[10px] w-4 text-muted-foreground">#{idx + 1}</span>
-                                                                                            <Input
-                                                                                                type="text"
-                                                                                                inputMode="decimal"
-                                                                                                value={editData.displayUnits[idx] || Number(unitWeight.toFixed(3)).toString()}
-                                                                                                onChange={(e) => handleUnitWeightChange(item.id, idx, e.target.value)}
-                                                                                                className="w-full h-8 text-right text-xs"
-                                                                                            />
-                                                                                        </div>
-                                                                                    ))}
-                                                                                    <div className="pt-2 border-t flex justify-between items-center text-xs font-bold">
-                                                                                        <span>Stuks Totaal</span>
-                                                                                        <span className={`${hasChanged ? 'text-orange-600' : ''}`}>{Number(totalWeight.toFixed(3))} kg</span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
+                                                                                )}
+                                                                            </div>
 
                                                                             <div className="flex items-center gap-2">
                                                                                 {hasChanged && (
