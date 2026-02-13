@@ -38,8 +38,9 @@ export default function OrderEditor({
     const [searchTerm, setSearchTerm] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [localQuantities, setLocalQuantities] = useState<Record<string, string>>({})
+    const [localItems, setLocalItems] = useState<OrderWithItems['order_items']>([])
 
-    // Sync metadata ONLY when the order ID itself changes (usually when first opening)
+    // Sync metadata ONLY when the order ID itself changes
     useEffect(() => {
         if (!open) return
         setCompanyName(order.company_name || '')
@@ -48,10 +49,23 @@ export default function OrderEditor({
         setWeekNumber(order.order_number?.toString() || '')
     }, [open, order.id])
 
-    // Sync local quantities on EVERY order update to stay fresh
+    // Sync metadata ONLY when the order ID itself changes
     useEffect(() => {
         if (!open) return
-        setLocalQuantities(order.order_items.reduce((acc, item) => ({
+        setCompanyName(order.company_name || '')
+        setEmail(order.email || '')
+        setNotes(order.notes || '')
+        setWeekNumber(order.order_number?.toString() || '')
+    }, [open, order.id])
+
+    // Sync local items and quantities on EVERY order update to stay fresh
+    useEffect(() => {
+        if (!open) return
+        // Map current items
+        const currentItems = [...order.order_items]
+        setLocalItems(currentItems)
+
+        setLocalQuantities(currentItems.reduce((acc, item) => ({
             ...acc,
             [item.id]: item.quantity.toString()
         }), {}))
@@ -83,28 +97,58 @@ export default function OrderEditor({
     }
 
     const handleAddItem = async (product: Product) => {
-        const existingItem = order.order_items.find(i => i.product_id === product.id)
+        const existingItem = localItems.find(i => i.product_id === product.id)
 
-        setIsSubmitting(true)
-        let result;
+        // Optimistic UI update
         if (existingItem) {
-            // Increment existing
-            result = await updateOrderItemQuantity(existingItem.id, existingItem.quantity + 1)
-        } else {
-            // Add new
-            result = await addOrderItem(order.id, product.id, 1, product.price)
-        }
-        setIsSubmitting(false)
+            const newQty = existingItem.quantity + 1
+            setLocalQuantities(prev => ({ ...prev, [existingItem.id]: newQty.toString() }))
+            setLocalItems(prev => prev.map(i => i.id === existingItem.id ? { ...i, quantity: newQty } : i))
 
-        if (result.success) {
-            onSuccess()
+            setIsSubmitting(true)
+            const result = await updateOrderItemQuantity(existingItem.id, newQty)
+            setIsSubmitting(false)
+            if (result.success) onSuccess()
+            else alert('Fout: ' + result.error)
         } else {
-            alert('Fout: ' + result.error)
+            // Temporary ID for optimistic update
+            const tempId = `temp-${Date.now()}`
+            const newItem = {
+                id: tempId,
+                order_id: order.id,
+                product_id: product.id,
+                quantity: 1,
+                price_snapshot: product.price,
+                actual_weight: null,
+                products: product
+            }
+
+            setLocalItems(prev => [...prev, newItem]) // New items at the bottom
+            setLocalQuantities(prev => ({ ...prev, [tempId]: '1' }))
+
+            setIsSubmitting(true)
+            const result = await addOrderItem(order.id, product.id, 1, product.price)
+            setIsSubmitting(false)
+            if (result.success) onSuccess()
+            else {
+                alert('Fout: ' + result.error)
+                // Revert on failure
+                setLocalItems(prev => prev.filter(i => i.id !== tempId))
+            }
         }
     }
 
     const handleRemoveItem = async (itemId: string) => {
         if (!confirm('Weet u zeker dat u dit item wilt verwijderen?')) return
+
+        // Optimistic UI update
+        setLocalItems(prev => prev.filter(i => i.id !== itemId))
+        setLocalQuantities(prev => {
+            const next = { ...prev }
+            delete next[itemId]
+            return next
+        })
+
         setIsSubmitting(true)
         const result = await removeOrderItem(itemId)
         setIsSubmitting(false)
@@ -112,6 +156,7 @@ export default function OrderEditor({
             onSuccess()
         } else {
             alert('Fout bij verwijderen item: ' + result.error)
+            // Note: The next prop sync will restore the item on error
         }
     }
 
@@ -121,6 +166,9 @@ export default function OrderEditor({
         const newQty = parseFloat(displayVal.replace(',', '.'))
         if (isNaN(newQty) || newQty < 0) return
 
+        // Update local items for consistency
+        setLocalItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity: newQty } : i))
+
         setIsSubmitting(true)
         const result = await updateOrderItemQuantity(itemId, newQty)
         setIsSubmitting(false)
@@ -129,11 +177,7 @@ export default function OrderEditor({
             onSuccess()
         } else {
             alert('Fout bij wijzigen aantal: ' + result.error)
-            // Revert on error
-            const item = order.order_items.find(i => i.id === itemId)
-            if (item) {
-                setLocalQuantities(prev => ({ ...prev, [itemId]: item.quantity.toString() }))
-            }
+            // Revert will happen via prop sync
         }
     }
 
@@ -230,12 +274,12 @@ export default function OrderEditor({
                         <div className="space-y-4">
                             <h3 className="font-bold text-sm">Bestelde Producten</h3>
                             <div className="border rounded-md divide-y max-h-[500px] overflow-y-auto bg-muted/10">
-                                {order.order_items.length === 0 ? (
+                                {localItems.length === 0 ? (
                                     <div className="p-12 text-center text-muted-foreground text-xs italic">
                                         Geen producten in deze bestelling
                                     </div>
                                 ) : (
-                                    order.order_items.map((item) => (
+                                    localItems.map((item) => (
                                         <div key={item.id} className="p-3 flex items-center justify-between bg-card">
                                             <div className="flex-1">
                                                 <p className="font-medium text-sm">{item.products?.name}</p>

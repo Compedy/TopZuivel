@@ -46,6 +46,7 @@ export default function RecurringOrderEditor({
     const [displayCart, setDisplayCart] = useState<Record<string, string>>({})
     const [interval, setInterval] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'manual'>(existingOrder?.interval || 'weekly')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [selectionOrder, setSelectionOrder] = useState<string[]>([])
 
     // Sync state when existingOrder changes or dialog opens
     useEffect(() => {
@@ -64,6 +65,7 @@ export default function RecurringOrderEditor({
             }), {}))
             setInterval(existingOrder?.interval || 'weekly')
             setSearchTerm('')
+            setSelectionOrder(existingOrder?.recurring_order_items.map(i => i.product_id) || [])
         }
     }, [open, existingOrder])
 
@@ -79,8 +81,15 @@ export default function RecurringOrderEditor({
     const handleQuantityChange = (productId: string, qty: number, displayVal?: string) => {
         setCart((prev: Record<string, number>) => {
             const next = { ...prev }
-            if (qty <= 0) delete next[productId]
-            else next[productId] = qty
+            if (qty <= 0) {
+                delete next[productId]
+                setSelectionOrder(p => p.filter(id => id !== productId))
+            } else {
+                if (!next[productId]) {
+                    setSelectionOrder(p => [...p, productId]) // New at the bottom
+                }
+                next[productId] = qty
+            }
             return next
         })
         if (displayVal !== undefined) {
@@ -245,9 +254,10 @@ export default function RecurringOrderEditor({
                                         Nog geen producten geselecteerd
                                     </div>
                                 ) : (
-                                    Object.entries(cart).map(([pid, qty]: [string, number]) => {
+                                    selectionOrder.map((pid) => {
+                                        const qty = cart[pid]
                                         const product = products.find((p: Product) => p.id === pid)
-                                        if (!product) return null
+                                        if (!product || qty === undefined) return null
                                         return (
                                             <div key={pid} className="p-3 flex items-center justify-between bg-card">
                                                 <div className="flex-1">
