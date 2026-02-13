@@ -52,6 +52,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     const [completing, setCompleting] = useState<string | null>(null)
     const [showCompleted, setShowCompleted] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+    const [optimisticCompletion, setOptimisticCompletion] = useState<Record<string, boolean>>({})
 
     const filteredOrders = useMemo(() => {
         return initialOrders.filter(order => {
@@ -93,11 +94,25 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     }
 
     const handleToggleCompletion = async (itemId: string, currentStatus: boolean) => {
-        const result = await toggleOrderItemCompletion(itemId, !currentStatus)
+        const newStatus = !currentStatus
+
+        // Optimistic update
+        setOptimisticCompletion(prev => ({ ...prev, [itemId]: newStatus }))
+
+        const result = await toggleOrderItemCompletion(itemId, newStatus)
         if (!result.success) {
-            alert('Fout bij bijwerken status: ' + result.error)
+            // Revert on failure
+            setOptimisticCompletion(prev => {
+                const newState = { ...prev }
+                delete newState[itemId]
+                return newState
+            })
+            alert('Fout bei bijwerken status: ' + result.error)
         } else {
             router.refresh()
+            // We keep the optimistic status until the refresh is complete
+            // (initialOrders update will naturally override it if we manage it correctly, 
+            // but for now, the render logic will prioritize local state)
         }
     }
 
@@ -539,6 +554,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                 const displayWeight = totalWeight
                                                 const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
                                                 const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
+                                                const isItemCompleted = optimisticCompletion[item.id] ?? item.is_completed
 
                                                 const rowTotalPrice = item.products?.is_price_per_kilo
                                                     ? (totalWeight * item.price_snapshot)
@@ -547,18 +563,18 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                         : (displayQty * item.price_snapshot)
 
                                                 return (
-                                                    <div key={item.id} className={`border rounded-lg p-3 space-y-3 transition-all duration-300 ${item.is_completed ? 'bg-green-100 border-green-200 shadow-inner' : 'bg-muted/10'}`}>
+                                                    <div key={item.id} className={`border rounded-lg p-3 space-y-3 transition-all duration-300 ${isItemCompleted ? 'bg-green-100 border-green-200 shadow-inner' : 'bg-muted/10'}`}>
                                                         <div className="flex justify-between items-start">
                                                             <div className="flex items-start gap-2">
                                                                 {!isCompleted && (
                                                                     <button
-                                                                        onClick={() => handleToggleCompletion(item.id, item.is_completed)}
-                                                                        className={`mt-0.5 transition-colors ${item.is_completed ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
+                                                                        onClick={() => handleToggleCompletion(item.id, isItemCompleted)}
+                                                                        className={`mt-0.5 transition-colors ${isItemCompleted ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
                                                                     >
-                                                                        <CheckCircle2 className={`h-5 w-5 ${item.is_completed ? 'fill-green-600/10' : ''}`} />
+                                                                        <CheckCircle2 className={`h-5 w-5 ${isItemCompleted ? 'fill-green-600/10' : ''}`} />
                                                                     </button>
                                                                 )}
-                                                                <div className={`font-bold text-sm ${item.is_completed ? 'text-green-900 line-through opacity-70' : ''}`}>
+                                                                <div className={`font-bold text-sm ${isItemCompleted ? 'text-green-900 line-through opacity-70' : ''}`}>
                                                                     {item.products?.name}
                                                                     {isCheese && (
                                                                         <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
@@ -637,7 +653,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                             </div>
                                                         ) : (
                                                             <div className="flex justify-between items-center border-t pt-2 text-xs">
-                                                                <span className="text-muted-foreground italic">{isCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
+                                                                <span className="text-muted-foreground italic">{isCompleted || isItemCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
                                                                 <span className="font-bold">Subtotaal: {formatPrice(rowTotalPrice)}</span>
                                                             </div>
                                                         )}
@@ -670,6 +686,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                     const displayWeight = totalWeight
                                                     const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
                                                     const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
+                                                    const isItemCompleted = optimisticCompletion[item.id] ?? item.is_completed
 
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
                                                         ? (totalWeight * item.price_snapshot)
@@ -678,19 +695,19 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                             : (displayQty * item.price_snapshot)
 
                                                     return (
-                                                        <tr key={item.id} className={`transition-all duration-300 ${item.is_completed ? 'bg-green-100/40 hover:bg-green-100/60' : 'hover:bg-muted/10'}`}>
+                                                        <tr key={item.id} className={`transition-all duration-300 ${isItemCompleted ? 'bg-green-100/40 hover:bg-green-100/60' : 'hover:bg-muted/10'}`}>
                                                             <td className="py-4 px-4 text-center">
                                                                 {!isCompleted && (
                                                                     <button
-                                                                        onClick={() => handleToggleCompletion(item.id, item.is_completed)}
-                                                                        className={`transition-colors ${item.is_completed ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
-                                                                        title={item.is_completed ? "Markeer als niet gereed" : "Markeer als gereed"}
+                                                                        onClick={() => handleToggleCompletion(item.id, isItemCompleted)}
+                                                                        className={`transition-colors ${isItemCompleted ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
+                                                                        title={isItemCompleted ? "Markeer als niet gereed" : "Markeer als gereed"}
                                                                     >
-                                                                        <CheckCircle2 className={`h-5 w-5 ${item.is_completed ? 'fill-green-600/10' : ''}`} />
+                                                                        <CheckCircle2 className={`h-5 w-5 ${isItemCompleted ? 'fill-green-600/10' : ''}`} />
                                                                     </button>
                                                                 )}
                                                             </td>
-                                                            <td className={`py-4 px-4 font-medium transition-all ${item.is_completed ? 'text-green-900/60 line-through decoration-green-600/50 decoration-2' : ''}`}>
+                                                            <td className={`py-4 px-4 font-medium transition-all ${isItemCompleted ? 'text-green-900/60 line-through decoration-green-600/50 decoration-2' : ''}`}>
                                                                 {item.products?.name}
                                                                 {isCheese && (
                                                                     <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
@@ -750,7 +767,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                         </div>
                                                                     ) : (
                                                                         <div className="flex flex-col items-end">
-                                                                            <span className="text-muted-foreground text-xs italic">{isCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
+                                                                            <span className="text-muted-foreground text-xs italic">{isCompleted || isItemCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
                                                                             <div className="text-xs font-bold text-muted-foreground">
                                                                                 Subtotaal: {formatPrice(rowTotalPrice)}
                                                                             </div>
