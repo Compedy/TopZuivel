@@ -37,6 +37,7 @@ export default async function AdminPage() {
                 quantity,
                 price_snapshot,
                 actual_weight,
+                is_completed,
                 products (name, unit_label, category, is_price_per_kilo, weight_per_unit, sort_order)
             )
         `)

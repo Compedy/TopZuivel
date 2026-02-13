@@ -547,7 +547,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                         : (displayQty * item.price_snapshot)
 
                                                 return (
-                                                    <div key={item.id} className={`border rounded-lg p-3 space-y-3 transition-colors ${item.is_completed ? 'bg-green-50/50 border-green-100' : 'bg-muted/10'}`}>
+                                                    <div key={item.id} className={`border rounded-lg p-3 space-y-3 transition-all duration-300 ${item.is_completed ? 'bg-green-100 border-green-200 shadow-inner' : 'bg-muted/10'}`}>
                                                         <div className="flex justify-between items-start">
                                                             <div className="flex items-start gap-2">
                                                                 {!isCompleted && (
@@ -678,7 +678,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                             : (displayQty * item.price_snapshot)
 
                                                     return (
-                                                        <tr key={item.id} className={`transition-colors ${item.is_completed ? 'bg-green-50/30 hover:bg-green-50/50' : 'hover:bg-muted/10'}`}>
+                                                        <tr key={item.id} className={`transition-all duration-300 ${item.is_completed ? 'bg-green-100/40 hover:bg-green-100/60' : 'hover:bg-muted/10'}`}>
                                                             <td className="py-4 px-4 text-center">
                                                                 {!isCompleted && (
                                                                     <button
@@ -690,7 +690,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                     </button>
                                                                 )}
                                                             </td>
-                                                            <td className={`py-4 px-4 font-medium ${item.is_completed ? 'text-green-900/70 line-through decoration-green-500/50' : ''}`}>
+                                                            <td className={`py-4 px-4 font-medium transition-all ${item.is_completed ? 'text-green-900/60 line-through decoration-green-600/50 decoration-2' : ''}`}>
                                                                 {item.products?.name}
                                                                 {isCheese && (
                                                                     <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
