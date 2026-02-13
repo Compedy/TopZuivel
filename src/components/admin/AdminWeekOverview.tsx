@@ -13,7 +13,10 @@ interface AdminWeekOverviewProps {
     orders: OrderWithItems[]
 }
 
-type SummedProduct = Product & { totalQuantity: number }
+type SummedProduct = Product & {
+    totalQuantity: number,
+    totalWeight: number
+}
 
 export default function AdminWeekOverview({ products, orders }: AdminWeekOverviewProps) {
     const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({})
@@ -62,7 +65,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
     }
 
     const calculateTotals = (weekOrders: OrderWithItems[]): SummedProduct[] => {
-        const totals: Record<string, number> = {}
+        const itemTotals: Record<string, { quantity: number, weight: number }> = {}
 
         weekOrders.forEach(order => {
             order.order_items?.forEach((item) => {
@@ -70,19 +73,27 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                 if (productId) {
                     const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                     const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                    // For piece based, we want the count of pieces
-                    // For weight based (kg), quantity IS the weight
+                    const standardWeight = item.products?.weight_per_unit || 1
+
                     const amount = isPieceBased ? Math.round(item.quantity) : item.quantity
-                    totals[productId] = (totals[productId] || 0) + amount
+                    const weight = item.actual_weight ?? (item.quantity * standardWeight)
+
+                    if (!itemTotals[productId]) {
+                        itemTotals[productId] = { quantity: 0, weight: 0 }
+                    }
+
+                    itemTotals[productId].quantity += amount
+                    itemTotals[productId].weight += weight
                 }
             })
         })
 
         return products
-            .filter(p => totals[p.id] && totals[p.id] > 0)
+            .filter(p => itemTotals[p.id] && itemTotals[p.id].quantity > 0)
             .map(p => ({
                 ...p,
-                totalQuantity: totals[p.id]
+                totalQuantity: itemTotals[p.id].quantity,
+                totalWeight: itemTotals[p.id].weight
             }))
     }
 
@@ -203,8 +214,13 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                                                             </td>
                                                                             <td className="py-2 px-4 md:py-2.5 md:px-6 text-right">
                                                                                 <div className="flex flex-col">
-                                                                                    <span className="font-mono font-bold text-sm md:text-lg">{product.totalQuantity}</span>
-                                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                                    <div className="flex items-baseline justify-end gap-1">
+                                                                                        <span className="font-mono font-bold text-sm md:text-lg">{product.totalQuantity}</span>
+                                                                                        <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                                    </div>
+                                                                                    <span className="text-[10px] md:text-xs font-black text-primary">
+                                                                                        {product.totalWeight.toFixed(2)} kg
+                                                                                    </span>
                                                                                 </div>
                                                                             </td>
                                                                             <td className="py-2 px-4 md:py-2.5 md:px-6 text-right">
@@ -215,13 +231,20 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                                                             </td>
                                                                             <td className="py-2 px-4 md:py-2.5 md:px-6 text-right bg-primary/5">
                                                                                 <div className="flex flex-col">
-                                                                                    <span className={cn(
-                                                                                        "font-mono font-black text-sm md:text-lg",
-                                                                                        productionNeeded > 0 ? "text-primary" : "text-muted-foreground/30"
-                                                                                    )}>
-                                                                                        {productionNeeded}
-                                                                                    </span>
-                                                                                    <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                                    <div className="flex items-baseline justify-end gap-1">
+                                                                                        <span className={cn(
+                                                                                            "font-mono font-black text-sm md:text-lg",
+                                                                                            productionNeeded > 0 ? "text-primary" : "text-muted-foreground/30"
+                                                                                        )}>
+                                                                                            {productionNeeded}
+                                                                                        </span>
+                                                                                        <span className="text-[9px] md:text-[10px] text-muted-foreground">{product.unit_label}</span>
+                                                                                    </div>
+                                                                                    {productionNeeded > 0 && product.weight_per_unit && (
+                                                                                        <span className="text-[10px] md:text-xs font-black text-orange-600">
+                                                                                            {(productionNeeded * product.weight_per_unit).toFixed(2)} kg
+                                                                                        </span>
+                                                                                    )}
                                                                                 </div>
                                                                             </td>
                                                                         </tr>
