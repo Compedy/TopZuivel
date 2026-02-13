@@ -49,15 +49,6 @@ export default function OrderEditor({
         setWeekNumber(order.order_number?.toString() || '')
     }, [open, order.id])
 
-    // Sync metadata ONLY when the order ID itself changes
-    useEffect(() => {
-        if (!open) return
-        setCompanyName(order.company_name || '')
-        setEmail(order.email || '')
-        setNotes(order.notes || '')
-        setWeekNumber(order.order_number?.toString() || '')
-    }, [open, order.id])
-
     // Sync local items and quantities on EVERY order update to stay fresh
     useEffect(() => {
         if (!open) return
@@ -120,6 +111,7 @@ export default function OrderEditor({
                 quantity: 1,
                 price_snapshot: product.price,
                 actual_weight: null,
+                is_completed: false,
                 products: product
             }
 

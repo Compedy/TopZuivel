@@ -31,7 +31,8 @@ CREATE TABLE orders (
     email TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     week_number INTEGER,
-    status TEXT DEFAULT 'pending'
+    status TEXT DEFAULT 'pending',
+    order_number INTEGER
 );
 
 -- Enable RLS
