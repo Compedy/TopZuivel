@@ -153,7 +153,8 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                                             .replace(/\bgevacumeerd\b/gi, 'Gevacumeerd')
                                                             .replace(/\s+/g, ' ')
                                                             .trim()
-                                                        const weight = p.totalQuantity * (p.weight_per_unit || 0)
+                                                        const productionUnits = Math.max(0, p.totalQuantity - (p.stock_quantity || 0))
+                                                        const weight = productionUnits * (p.weight_per_unit || 0)
                                                         aggregation[baseName] = (aggregation[baseName] || 0) + weight
                                                     })
                                                 }
