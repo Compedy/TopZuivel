@@ -39,19 +39,23 @@ export default function OrderEditor({
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [localQuantities, setLocalQuantities] = useState<Record<string, string>>({})
 
-    // Effect to initialize metadata when a new order is opened
+    // Sync metadata ONLY when the order ID itself changes (usually when first opening)
     useEffect(() => {
         if (!open) return
         setCompanyName(order.company_name || '')
         setEmail(order.email || '')
         setNotes(order.notes || '')
-        setWeekNumber(order.order_number?.toString() || '') // Changed to order_number display
-        // We sync local quantities on EVERY order update to stay fresh
+        setWeekNumber(order.order_number?.toString() || '')
+    }, [open, order.id])
+
+    // Sync local quantities on EVERY order update to stay fresh
+    useEffect(() => {
+        if (!open) return
         setLocalQuantities(order.order_items.reduce((acc, item) => ({
             ...acc,
             [item.id]: item.quantity.toString()
         }), {}))
-    }, [open, order.id]) // Only reset metadata when the order ID itself changes
+    }, [open, order.order_items])
 
     const filteredProducts = useMemo(() => {
         if (!searchTerm) return products
@@ -79,13 +83,23 @@ export default function OrderEditor({
     }
 
     const handleAddItem = async (product: Product) => {
+        const existingItem = order.order_items.find(i => i.product_id === product.id)
+
         setIsSubmitting(true)
-        const result = await addOrderItem(order.id, product.id, 1, product.price)
+        let result;
+        if (existingItem) {
+            // Increment existing
+            result = await updateOrderItemQuantity(existingItem.id, existingItem.quantity + 1)
+        } else {
+            // Add new
+            result = await addOrderItem(order.id, product.id, 1, product.price)
+        }
         setIsSubmitting(false)
+
         if (result.success) {
             onSuccess()
         } else {
-            alert('Fout bij toevoegen item: ' + result.error)
+            alert('Fout: ' + result.error)
         }
     }
 
@@ -125,7 +139,7 @@ export default function OrderEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0">
+            <DialogContent className="sm:max-w-7xl w-full h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 border-b">
                     <DialogTitle>Bestelling Bewerken - #{order.order_number}</DialogTitle>
                 </DialogHeader>
