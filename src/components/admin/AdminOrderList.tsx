@@ -14,7 +14,8 @@ import {
     updateOrderStatus,
     updateOrderMetadata,
     addOrderItem,
-    removeOrderItem
+    removeOrderItem,
+    toggleOrderItemCompletion
 } from '@/app/admin/actions'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -89,6 +90,15 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
 
     const toggleOrder = (orderId: string) => {
         setExpandedOrder(expandedOrder === orderId ? null : orderId)
+    }
+
+    const handleToggleCompletion = async (itemId: string, currentStatus: boolean) => {
+        const result = await toggleOrderItemCompletion(itemId, !currentStatus)
+        if (!result.success) {
+            alert('Fout bij bijwerken status: ' + result.error)
+        } else {
+            router.refresh()
+        }
     }
 
     const initEditing = (item: any) => {
@@ -369,6 +379,16 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             }
         }
 
+        const allItemsCompleted = order.order_items.every(i => i.is_completed)
+        if (!allItemsCompleted) {
+            if (!confirm('Niet alle regels zijn gemarkeerd als gereed. Wilt u toch de PDF printen? De bestelling blijft in dat geval OPEN staan.')) {
+                return
+            }
+            // Just generate PDF and stay open
+            await generatePDF(order)
+            return
+        }
+
         setCompleting(order.id)
         try {
             const result = await updateOrderStatus(order.id, 'completed')
@@ -510,13 +530,23 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                         : (displayQty * item.price_snapshot)
 
                                                 return (
-                                                    <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-muted/10">
+                                                    <div key={item.id} className={`border rounded-lg p-3 space-y-3 transition-colors ${item.is_completed ? 'bg-green-50/50 border-green-100' : 'bg-muted/10'}`}>
                                                         <div className="flex justify-between items-start">
-                                                            <div className="font-bold text-sm">
-                                                                {item.products?.name}
-                                                                {isCheese && (
-                                                                    <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
+                                                            <div className="flex items-start gap-2">
+                                                                {!isCompleted && (
+                                                                    <button
+                                                                        onClick={() => handleToggleCompletion(item.id, item.is_completed)}
+                                                                        className={`mt-0.5 transition-colors ${item.is_completed ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
+                                                                    >
+                                                                        <CheckCircle2 className={`h-5 w-5 ${item.is_completed ? 'fill-green-600/10' : ''}`} />
+                                                                    </button>
                                                                 )}
+                                                                <div className={`font-bold text-sm ${item.is_completed ? 'text-green-900 line-through opacity-70' : ''}`}>
+                                                                    {item.products?.name}
+                                                                    {isCheese && (
+                                                                        <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                             <div className="text-right">
                                                                 <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
@@ -607,6 +637,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                         <table className="hidden md:table w-full text-sm">
                                             <thead className="bg-muted/50 text-muted-foreground border-b text-[11px] uppercase tracking-wider">
                                                 <tr>
+                                                    <th className="py-3 px-4 text-left font-semibold w-10">Vink</th>
                                                     <th className="py-3 px-4 text-left font-semibold">Product</th>
                                                     <th className="py-3 px-4 text-center font-semibold">Originele Bestelling</th>
                                                     <th className="py-3 px-4 text-right font-semibold">Aanpassen Gewicht / Aantal</th>
@@ -635,8 +666,19 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                             : (displayQty * item.price_snapshot)
 
                                                     return (
-                                                        <tr key={item.id} className="hover:bg-muted/10 transition-colors">
-                                                            <td className="py-4 px-4 font-medium">
+                                                        <tr key={item.id} className={`transition-colors ${item.is_completed ? 'bg-green-50/30 hover:bg-green-50/50' : 'hover:bg-muted/10'}`}>
+                                                            <td className="py-4 px-4 text-center">
+                                                                {!isCompleted && (
+                                                                    <button
+                                                                        onClick={() => handleToggleCompletion(item.id, item.is_completed)}
+                                                                        className={`transition-colors ${item.is_completed ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
+                                                                        title={item.is_completed ? "Markeer als niet gereed" : "Markeer als gereed"}
+                                                                    >
+                                                                        <CheckCircle2 className={`h-5 w-5 ${item.is_completed ? 'fill-green-600/10' : ''}`} />
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                            <td className={`py-4 px-4 font-medium ${item.is_completed ? 'text-green-900/70 line-through decoration-green-500/50' : ''}`}>
                                                                 {item.products?.name}
                                                                 {isCheese && (
                                                                     <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>

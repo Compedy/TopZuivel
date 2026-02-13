@@ -91,6 +91,7 @@ export interface Database {
                     quantity: number
                     price_snapshot: number
                     actual_weight: number | null
+                    is_completed: boolean
                 }
                 Insert: {
                     id?: string
@@ -99,6 +100,7 @@ export interface Database {
                     quantity: number
                     price_snapshot: number
                     actual_weight?: number | null
+                    is_completed?: boolean
                 }
                 Update: {
                     id?: string
@@ -107,6 +109,7 @@ export interface Database {
                     quantity?: number
                     price_snapshot?: number
                     actual_weight?: number | null
+                    is_completed?: boolean
                 }
             }
             recurring_orders: {

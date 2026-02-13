@@ -330,8 +330,26 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
         console.error('Update order item error:', error)
         return { success: false, error: error.message }
     }
+    revalidatePath('/admin')
+    return { success: true }
+}
 
-    console.log(`[AdminAction] Successfully updated order item ${itemId}`)
+export async function toggleOrderItemCompletion(itemId: string, isCompleted: boolean) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('order_items')
+        .update({ is_completed: isCompleted })
+        .eq('id', itemId)
+
+    if (error) {
+        console.error('Toggle order item completion error:', error)
+        return { success: false, error: error.message }
+    }
+
     revalidatePath('/admin')
     return { success: true }
 }

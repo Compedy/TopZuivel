@@ -14,7 +14,8 @@ CREATE TABLE products (
     is_price_per_kilo BOOLEAN DEFAULT false, -- Controls frontend price calculation
     weight_per_unit DECIMAL(10,3),           -- Used for total weight calculation
     is_active BOOLEAN DEFAULT true,
-    sort_order INTEGER DEFAULT 999
+    sort_order INTEGER DEFAULT 999,
+    stock_quantity DECIMAL(10,2) DEFAULT 0
 );
 
 -- Indexes for performance
@@ -43,7 +44,8 @@ CREATE TABLE order_items (
     product_id UUID REFERENCES products(id),
     quantity DECIMAL(10,2) NOT NULL,
     price_snapshot DECIMAL(10,2) NOT NULL, -- Price at time of order
-    actual_weight DECIMAL(10,3) -- Optional actual weight for piece-based items
+    actual_weight DECIMAL(10,3), -- Optional actual weight for piece-based items
+    is_completed BOOLEAN DEFAULT false
 );
 
 -- Enable RLS
@@ -61,3 +63,32 @@ CREATE POLICY "Public read active products" ON products FOR SELECT USING (is_act
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_week_status ON orders(week_number, status);
+
+-- Trigger for Year-Based Sequential Order Numbering
+CREATE OR REPLACE FUNCTION generate_order_number()
+RETURNS TRIGGER AS $$
+DECLARE
+    current_year INTEGER;
+    max_num INTEGER;
+BEGIN
+    current_year := EXTRACT(YEAR FROM NOW());
+    
+    -- Find the highest number for this year
+    SELECT MAX(order_number) INTO max_num 
+    FROM orders 
+    WHERE created_at >= date_trunc('year', NOW());
+    
+    IF max_num IS NULL THEN
+        NEW.order_number := (current_year % 100) * 10000 + 1;
+    ELSE
+        NEW.order_number := max_num + 1;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_generate_order_number
+    BEFORE INSERT ON orders
+    FOR EACH ROW
+    EXECUTE FUNCTION generate_order_number();
