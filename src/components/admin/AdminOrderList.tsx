@@ -599,11 +599,6 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                         />
                                                                     </div>
                                                                     <span className="text-xs font-bold text-muted-foreground uppercase">kg Totaal</span>
-                                                                    {isPieceBased && (
-                                                                        <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
-                                                                            ({displayQty} x {standardWeight}kg)
-                                                                        </div>
-                                                                    )}
                                                                 </div>
                                                                 <div className="flex justify-between items-center border-t pt-2">
                                                                     <div className="text-xs font-bold text-primary">Subtotaal: {formatPrice(rowTotalPrice)}</div>
@@ -740,11 +735,6 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                                     />
                                                                                 </div>
                                                                                 <span className="text-sm font-bold text-muted-foreground uppercase">kg Totaal</span>
-                                                                                {isPieceBased && (
-                                                                                    <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
-                                                                                        (Oorspronkelijk: {Number((item.quantity * standardWeight).toFixed(3))}kg)
-                                                                                    </div>
-                                                                                )}
                                                                             </div>
 
                                                                             <div className="flex items-center gap-2">
