@@ -108,7 +108,6 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
         const unitLabel = item.products?.unit_label?.toLowerCase() || ''
         const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
 
-        // Use actual_weight if it exists, otherwise calculate from quantity
         const totalWeight = item.actual_weight ?? (item.quantity * standardWeight)
 
         const unitCount = Math.max(1, Math.ceil(item.quantity))
@@ -119,9 +118,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             units[unitCount - 1] = Math.max(0, totalWeight - sumOfOthers)
         }
 
-        const displayTotalWeight = isPieceBased
-            ? Number((totalWeight / (item.quantity || 1)).toFixed(3)).toString()
-            : Number(totalWeight.toFixed(3)).toString()
+        const displayTotalWeight = Number(totalWeight.toFixed(3)).toString()
 
         setEditingItems(prev => ({
             ...prev,
@@ -140,12 +137,29 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             const item = prev[itemId]
             if (!item) return prev
             const num = parseFloat(displayVal.replace(',', '.'))
+            const totalWeight = isNaN(num) ? 0 : Math.round(num * 1000) / 1000
+
+            // Redistribute total weight evenly across units
+            const unitCount = item.units.length
+            const newUnits = Array(unitCount).fill(0)
+            if (unitCount > 0) {
+                const avg = totalWeight / unitCount
+                for (let i = 0; i < unitCount; i++) {
+                    newUnits[i] = Math.round(avg * 1000) / 1000
+                }
+                // Adjust last unit for rounding errors
+                const sumOthers = newUnits.slice(0, -1).reduce((a, b) => a + b, 0)
+                newUnits[unitCount - 1] = Math.round((totalWeight - sumOthers) * 1000) / 1000
+            }
+
             return {
                 ...prev,
                 [itemId]: {
                     ...item,
                     displayTotalWeight: displayVal,
-                    totalWeight: isNaN(num) ? 0 : Math.round(num * 1000) / 1000
+                    totalWeight: totalWeight,
+                    units: newUnits,
+                    displayUnits: newUnits.map(u => Number(u.toFixed(3)).toString())
                 }
             }
         })
@@ -163,13 +177,16 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             newUnits[index] = isNaN(num) ? 0 : Math.round(num * 1000) / 1000
 
             const newTotal = newUnits.reduce((a, b) => a + b, 0)
+            const roundedTotal = Math.round(newTotal * 1000) / 1000
+
             return {
                 ...prev,
                 [itemId]: {
                     ...item,
                     units: newUnits,
                     displayUnits: newDisplayUnits,
-                    totalWeight: Math.round(newTotal * 1000) / 1000
+                    totalWeight: roundedTotal,
+                    displayTotalWeight: Number(roundedTotal.toFixed(3)).toString()
                 }
             }
         })
@@ -513,13 +530,13 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                 const isCheese = item.products?.category === 'Kaas'
                                                 const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                                                 const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                                                const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo)
+                                                const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo || (item.products?.weight_per_unit && item.products.weight_per_unit > 0))
 
                                                 const editData = editingItems[item.id]
                                                 const standardWeight = item.products?.weight_per_unit || 1
                                                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
                                                 const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
-                                                const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
+                                                const displayWeight = totalWeight
                                                 const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
                                                 const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
 
@@ -553,10 +570,10 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                 <div className="text-[10px] text-muted-foreground">{formatPrice(item.price_snapshot)} / {item.products?.unit_label}</div>
                                                                 {isCheese && (
                                                                     <div className="text-[10px] text-muted-foreground flex flex-col items-end gap-0.5 mt-1">
-                                                                        <span>Standaard: {Number(standardWeight.toFixed(3))} kg/st</span>
+                                                                        <span>Standaard Totaal: {Number((item.quantity * standardWeight).toFixed(3))} kg</span>
                                                                         {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                             <span className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-1 rounded border border-orange-100">
-                                                                                <Scale className="h-2 w-2" /> Aangepast: {Number((item.actual_weight / (displayQty || 1)).toFixed(3))}kg/st
+                                                                                <Scale className="h-2 w-2" /> Aangepast Totaal: {Number(item.actual_weight.toFixed(3))}kg
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -649,13 +666,13 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                     const isCheese = item.products?.category === 'Kaas'
                                                     const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                                                     const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                                                    const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo)
+                                                    const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo || (item.products?.weight_per_unit && item.products.weight_per_unit > 0))
 
                                                     const editData = editingItems[item.id]
                                                     const standardWeight = item.products?.weight_per_unit || 1
                                                     const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
                                                     const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
-                                                    const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
+                                                    const displayWeight = totalWeight
                                                     const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
                                                     const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
 
@@ -691,11 +708,11 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                     {isCheese && (
                                                                         <div className="flex flex-col mt-2 gap-1 w-full max-w-[140px]">
                                                                             <span className="text-[10px] text-muted-foreground bg-muted/50 p-1 rounded border border-border/50">
-                                                                                Standaard: {Number(standardWeight.toFixed(3))} kg/st
+                                                                                Standaard Totaal: {Number((item.quantity * standardWeight).toFixed(3))} kg
                                                                             </span>
                                                                             {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                                 <span className="text-[10px] text-blue-700 font-bold bg-blue-50 p-1 rounded flex items-center gap-1 justify-center border border-blue-100 shadow-sm">
-                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast: {Number((item.actual_weight / (displayQty || 1)).toFixed(3))}kg/st
+                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast Totaal: {Number(item.actual_weight.toFixed(3))}kg
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -725,7 +742,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                                                                                 <span className="text-sm font-bold text-muted-foreground uppercase">kg Totaal</span>
                                                                                 {isPieceBased && (
                                                                                     <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
-                                                                                        ({displayQty} x {standardWeight}kg)
+                                                                                        (Oorspronkelijk: {Number((item.quantity * standardWeight).toFixed(3))}kg)
                                                                                     </div>
                                                                                 )}
                                                                             </div>
