@@ -362,11 +362,11 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             })
 
             // Totals
-            const totalItems = order.order_items.reduce((sum, item) => sum + getDisplayQuantity(item.quantity, item.products?.unit_label), 0)
+            const totalLines = order.order_items.length
 
             const lastY = (doc as any).lastAutoTable.finalY + 10
             doc.setFont('helvetica', 'bold')
-            doc.text(`Totaal aantal items: ${totalItems}`, 15, lastY)
+            doc.text(`Totaal aantal regels: ${totalLines}`, 15, lastY)
 
             // Footer
             doc.setFontSize(8)
