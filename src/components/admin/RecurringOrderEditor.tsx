@@ -131,7 +131,7 @@ export default function RecurringOrderEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0">
+            <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 border-b">
                     <DialogTitle>{existingOrder ? 'Periodieke Bestelling Bewerken' : 'Nieuwe Periodieke Bestelling'}</DialogTitle>
                 </DialogHeader>
@@ -216,7 +216,7 @@ export default function RecurringOrderEditor({
                                     />
                                 </div>
                             </div>
-                            <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
+                            <div className="border rounded-md divide-y max-h-[600px] overflow-y-auto">
                                 {filteredProducts.map((product: Product) => (
                                     <div key={product.id} className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
                                         <div>
@@ -239,7 +239,7 @@ export default function RecurringOrderEditor({
                         {/* Selected List */}
                         <div className="space-y-4">
                             <h3 className="font-bold text-sm">Geselecteerde Producten</h3>
-                            <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto bg-muted/10">
+                            <div className="border rounded-md divide-y max-h-[600px] overflow-y-auto bg-muted/10">
                                 {Object.keys(cart).length === 0 ? (
                                     <div className="p-12 text-center text-muted-foreground text-xs italic">
                                         Nog geen producten geselecteerd

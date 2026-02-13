@@ -39,20 +39,19 @@ export default function OrderEditor({
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [localQuantities, setLocalQuantities] = useState<Record<string, string>>({})
 
-    // Sync state when order changes or dialog opens
+    // Effect to initialize metadata when a new order is opened
     useEffect(() => {
-        if (open) {
-            setCompanyName(order.company_name || '')
-            setEmail(order.email || '')
-            setNotes(order.notes || '')
-            setWeekNumber(order.week_number?.toString() || '')
-            setSearchTerm('')
-            setLocalQuantities(order.order_items.reduce((acc, item) => ({
-                ...acc,
-                [item.id]: item.quantity.toString()
-            }), {}))
-        }
-    }, [open, order])
+        if (!open) return
+        setCompanyName(order.company_name || '')
+        setEmail(order.email || '')
+        setNotes(order.notes || '')
+        setWeekNumber(order.order_number?.toString() || '') // Changed to order_number display
+        // We sync local quantities on EVERY order update to stay fresh
+        setLocalQuantities(order.order_items.reduce((acc, item) => ({
+            ...acc,
+            [item.id]: item.quantity.toString()
+        }), {}))
+    }, [open, order.id]) // Only reset metadata when the order ID itself changes
 
     const filteredProducts = useMemo(() => {
         if (!searchTerm) return products
@@ -126,7 +125,7 @@ export default function OrderEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0">
+            <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 border-b">
                     <DialogTitle>Bestelling Bewerken - #{order.order_number}</DialogTitle>
                 </DialogHeader>
@@ -192,7 +191,7 @@ export default function OrderEditor({
                                     />
                                 </div>
                             </div>
-                            <div className="border rounded-md divide-y max-h-[300px] overflow-y-auto">
+                            <div className="border rounded-md divide-y max-h-[500px] overflow-y-auto">
                                 {filteredProducts.map((product: Product) => (
                                     <div key={product.id} className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
                                         <div>
@@ -216,7 +215,7 @@ export default function OrderEditor({
                         {/* Current Items */}
                         <div className="space-y-4">
                             <h3 className="font-bold text-sm">Bestelde Producten</h3>
-                            <div className="border rounded-md divide-y max-h-[300px] overflow-y-auto bg-muted/10">
+                            <div className="border rounded-md divide-y max-h-[500px] overflow-y-auto bg-muted/10">
                                 {order.order_items.length === 0 ? (
                                     <div className="p-12 text-center text-muted-foreground text-xs italic">
                                         Geen producten in deze bestelling
