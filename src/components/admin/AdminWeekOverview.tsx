@@ -148,10 +148,10 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                                 if (isVacuumed) {
                                                     section.items.forEach(p => {
                                                         const baseName = p.name
-                                                            .replace(/\d+g/gi, '')
-                                                            .replace(/\d+kg/gi, '')
-                                                            .replace(/\(gevacumeerd\)/gi, '')
-                                                            .replace(/gevacumeerd/gi, '')
+                                                            .replace(/\s*\d+\s*(gram|gr|g|kg|kilo)\s*/gi, ' ')
+                                                            .replace(/\(gevacumeerd\)/gi, 'gevacumeerd')
+                                                            .replace(/\bgevacumeerd\b/gi, 'Gevacumeerd')
+                                                            .replace(/\s+/g, ' ')
                                                             .trim()
                                                         const weight = p.totalQuantity * (p.weight_per_unit || 0)
                                                         aggregation[baseName] = (aggregation[baseName] || 0) + weight
