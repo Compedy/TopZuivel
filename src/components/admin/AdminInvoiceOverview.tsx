@@ -59,7 +59,7 @@ Maand: ${formatMonthName(customer.month)}
 Producten:
 ${customer.items.map(item => {
             const isPieceBased = ['st', 'stuk', 'blok'].includes(item.unitLabel.toLowerCase())
-            const weightInfo = isPieceBased ? ` (${item.totalWeight.toFixed(2)} kg)` : ''
+            const weightInfo = (isPieceBased && item.hasWeightInfo) ? ` (${item.totalWeight.toFixed(2)} kg)` : ''
             return `- ${item.quantity} ${item.unitLabel} ${item.name}${weightInfo} @ ${formatPrice(item.priceAtSnapshot)} = ${formatPrice(item.totalLinePrice)}`
         }).join('\n')}
 
@@ -139,7 +139,7 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                                         <div key={item.productId} className="flex justify-between text-sm">
                                                             <span>
                                                                 <span className="font-medium">{item.quantity}×</span> {item.name}
-                                                                {isPieceBased && (
+                                                                {isPieceBased && item.hasWeightInfo && (
                                                                     <span className="text-xs text-muted-foreground ml-1">
                                                                         ({item.totalWeight.toFixed(2)} kg)
                                                                     </span>
