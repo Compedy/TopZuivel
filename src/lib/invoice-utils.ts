@@ -9,6 +9,7 @@ export interface CustomerMonthlyTotal {
         name: string
         unitLabel: string
         quantity: number
+        totalWeight: number
         priceAtSnapshot: number
         totalLinePrice: number
     }[]
@@ -79,6 +80,7 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
                         unitLabel: p.unit_label,
                         // For display: pieces for stuks, weight for kg
                         quantity: isPieceBased ? total.pieces : total.weight,
+                        totalWeight: total.weight,
                         priceAtSnapshot: total.price,
                         totalLinePrice: isPieceBased
                             ? (p.is_price_per_kilo

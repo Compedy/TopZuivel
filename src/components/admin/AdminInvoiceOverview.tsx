@@ -57,7 +57,11 @@ Factuurgegevens voor: ${customer.mostUsedCompanyName} (${customer.email})
 Maand: ${formatMonthName(customer.month)}
 
 Producten:
-${customer.items.map(item => `- ${item.name}: ${item.quantity} ${item.unitLabel} @ ${formatPrice(item.priceAtSnapshot)} = ${formatPrice(item.totalLinePrice)}`).join('\n')}
+${customer.items.map(item => {
+            const isPieceBased = ['st', 'stuk', 'blok'].includes(item.unitLabel.toLowerCase())
+            const weightInfo = isPieceBased ? ` (${item.totalWeight.toFixed(2)} kg)` : ''
+            return `- ${item.quantity} ${item.unitLabel} ${item.name}${weightInfo} @ ${formatPrice(item.priceAtSnapshot)} = ${formatPrice(item.totalLinePrice)}`
+        }).join('\n')}
 
 Totaal: ${formatPrice(customer.grandTotal)}
         `.trim()
@@ -129,14 +133,22 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                         </CardHeader>
                                         <CardContent className="pt-4">
                                             <div className="space-y-2">
-                                                {customer.items.map(item => (
-                                                    <div key={item.productId} className="flex justify-between text-sm">
-                                                        <span>
-                                                            <span className="font-medium">{item.quantity}×</span> {item.name}
-                                                        </span>
-                                                        <span className="text-muted-foreground">{formatPrice(item.totalLinePrice)}</span>
-                                                    </div>
-                                                ))}
+                                                {customer.items.map(item => {
+                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(item.unitLabel.toLowerCase())
+                                                    return (
+                                                        <div key={item.productId} className="flex justify-between text-sm">
+                                                            <span>
+                                                                <span className="font-medium">{item.quantity}×</span> {item.name}
+                                                                {isPieceBased && (
+                                                                    <span className="text-xs text-muted-foreground ml-1">
+                                                                        ({item.totalWeight.toFixed(2)} kg)
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                            <span className="text-muted-foreground">{formatPrice(item.totalLinePrice)}</span>
+                                                        </div>
+                                                    )
+                                                })}
                                                 <div className="border-t pt-2 mt-4 flex justify-between font-bold">
                                                     <span>Maand Totaal</span>
                                                     <span className="text-primary">{formatPrice(customer.grandTotal)}</span>
