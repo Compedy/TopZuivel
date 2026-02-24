@@ -21,7 +21,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
     const { companyName, email, cartItems, notes } = validated.data
 
     // Use admin client to bypass RLS for public orders
-    const supabase: SupabaseClient<Database> = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // 1. Calculate Delivery Week (Week n+1)
     const getWeek = (d: Date) => {
@@ -46,7 +46,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             notes: notes || null
         })
         .select()
-        .single() as any)
+        .single())
 
     if (orderError || !order) {
         console.error('Order creation failed:', orderError)
