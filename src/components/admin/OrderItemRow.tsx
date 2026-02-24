@@ -48,7 +48,7 @@ export default function OrderItemRow({
 
     const rowTotalPrice = item.products?.is_price_per_kilo
         ? (totalWeight * item.price_snapshot)
-        : (standardWeight > 0 && ['st', 'stuk', 'blok'].includes(unitLabel?.toLowerCase() || ''))
+        : (!!(standardWeight > 0) && ['st', 'stuk', 'blok'].includes(unitLabel?.toLowerCase() || ''))
             ? (totalWeight * (item.price_snapshot / standardWeight))
             : (displayQty * item.price_snapshot)
 

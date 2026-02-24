@@ -132,12 +132,12 @@ export default function OrderCard({
                             <tbody className="divide-y">
                                 {[...order.order_items].sort((a, b) => (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)).map((item) => {
                                     const unitLabel = item.products?.unit_label?.toLowerCase() || ''
-                                    const isWeightAdjustable = !isCompleted && (
+                                    const isWeightAdjustable = !!(!isCompleted && (
                                         item.products?.category === 'Kaas' ||
                                         unitLabel === 'kg' ||
                                         item.products?.is_price_per_kilo ||
                                         (item.products?.weight_per_unit && item.products.weight_per_unit > 0)
-                                    )
+                                    ))
                                     const isItemCompleted = !!(optimisticCompletion[item.id] ?? item.is_completed)
                                     const editData = editingItems[item.id]
                                     const standardWeight = item.products?.weight_per_unit || 1
