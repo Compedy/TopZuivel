@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { OrderWithItems, Product } from '@/types'
-import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText, Search } from 'lucide-react'
+import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText, Search, Pencil } from 'lucide-react'
 import {
     updateOrderItemQuantity,
     updateOrderStatus,
@@ -19,8 +19,9 @@ import {
 } from '@/app/admin/actions'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import OrderSearch from './OrderSearch'
+import OrderCard from './OrderCard'
 import OrderEditor from './OrderEditor'
-import { Pencil } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface AdminOrderListProps {
@@ -441,444 +442,49 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-card p-4 rounded-lg border shadow-sm gap-4">
-                <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                    <h2 className="font-bold text-lg">Bestellingen Beheer</h2>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                    <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Zoek op #, klant of email..."
-                            className="pl-8 h-9 text-xs"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex items-center space-x-2 whitespace-nowrap">
-                        <Label htmlFor="show-completed" className="text-sm text-muted-foreground">Toon voltooid</Label>
-                        <Switch
-                            id="show-completed"
-                            checked={showCompleted}
-                            onCheckedChange={setShowCompleted}
-                        />
-                    </div>
-                </div>
-            </div>
+            <OrderSearch
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                showCompleted={showCompleted}
+                setShowCompleted={setShowCompleted}
+            />
 
             {filteredOrders.length === 0 ? (
                 <Card>
                     <CardContent className="pt-6 text-center text-muted-foreground">Geen bestellingen gevonden.</CardContent>
                 </Card>
             ) : (
-                filteredOrders.map(order => {
-                    const isExpanded = expandedOrder === order.id
-                    const isCompleted = order.status === 'completed'
-
-                    return (
-                        <Card key={order.id} className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-2 ring-primary shadow-lg border-l-4 border-l-primary' : 'hover:shadow-md'} ${isCompleted ? 'opacity-70 grayscale-[0.5]' : ''}`}>
-                            <CardHeader
-                                className={`bg-muted/30 py-4 flex flex-row items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? 'border-b' : ''}`}
-                                onClick={() => toggleOrder(order.id)}
-                            >
-                                <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-lg">{order.company_name || 'Onbekende Klant'}</span>
-                                            <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Order #{order.order_number}</span>
-                                        </div>
-                                        <Badge variant={isCompleted ? 'outline' : (order.status === 'open' || order.status === 'pending') ? 'default' : 'secondary'} className={`text-[10px] uppercase ${isCompleted ? 'bg-green-100 text-green-700 border-green-200' : ''}`}>
-                                            {order.status === 'completed' ? 'voldaan' : order.status === 'pending' ? 'open' : order.status}
-                                        </Badge>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">{order.email}</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    {!isCompleted && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                setEditingOrderId(order.id)
-                                                setIsEditorOpen(true)
-                                            }}
-                                        >
-                                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                                        </Button>
-                                    )}
-                                    <div className="flex flex-col items-end gap-1 text-right">
-                                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                            {formatDate(order.created_at)}
-                                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                        </span>
-                                        {order.notes && !isExpanded && (
-                                            <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
-                                                Heeft opmerking
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            {isExpanded && (
-                                <CardContent className="p-0 animate-in slide-in-from-top-2 duration-200">
-                                    {order.notes && (
-                                        <div className="bg-yellow-50/50 p-4 border-b border-yellow-100">
-                                            <div className="flex items-start gap-2">
-                                                <FileText className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
-                                                <div className="space-y-1">
-                                                    <span className="text-xs font-bold text-yellow-800 uppercase tracking-wider">Opmerking van klant:</span>
-                                                    <p className="text-sm text-yellow-900 leading-relaxed font-medium">
-                                                        {order.notes}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="md:overflow-x-auto">
-                                        <div className="md:hidden space-y-4 p-4">
-                                            {[...order.order_items].sort((a, b) => (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)).map((item) => {
-                                                const isCheese = item.products?.category === 'Kaas'
-                                                const unitLabel = item.products?.unit_label?.toLowerCase() || ''
-                                                const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                                                const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo || (item.products?.weight_per_unit && item.products.weight_per_unit > 0))
-
-                                                const editData = editingItems[item.id]
-                                                const standardWeight = item.products?.weight_per_unit || 1
-                                                const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
-                                                const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
-                                                const displayWeight = totalWeight
-                                                const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
-                                                const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
-                                                const isItemCompleted = optimisticCompletion[item.id] ?? item.is_completed
-
-                                                const rowTotalPrice = item.products?.is_price_per_kilo
-                                                    ? (totalWeight * item.price_snapshot)
-                                                    : (standardWeight > 0 && isPieceBased)
-                                                        ? (totalWeight * (item.price_snapshot / standardWeight))
-                                                        : (displayQty * item.price_snapshot)
-
-                                                return (
-                                                    <div key={item.id} className={`border rounded-lg p-3 space-y-3 transition-all duration-300 ${isItemCompleted ? 'bg-green-100 border-green-200 shadow-inner' : 'bg-muted/10'}`}>
-                                                        <div className="flex justify-between items-start">
-                                                            <div className="flex items-start gap-2">
-                                                                {!isCompleted && (
-                                                                    <button
-                                                                        onClick={() => handleToggleCompletion(item.id, isItemCompleted)}
-                                                                        className={`mt-0.5 transition-colors ${isItemCompleted ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
-                                                                    >
-                                                                        <CheckCircle2 className={`h-5 w-5 ${isItemCompleted ? 'fill-green-600/10' : ''}`} />
-                                                                    </button>
-                                                                )}
-                                                                <div className={`font-bold text-sm ${isItemCompleted ? 'text-green-900 line-through opacity-70' : ''}`}>
-                                                                    {item.products?.name}
-                                                                    {isCheese && (
-                                                                        <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
-                                                                <div className="text-[10px] text-muted-foreground">{formatPrice(item.price_snapshot)} / {item.products?.unit_label}</div>
-                                                                {isCheese && (
-                                                                    <div className="text-[10px] text-muted-foreground flex flex-col items-end gap-0.5 mt-1">
-                                                                        <span>Standaard Totaal: {Number((item.quantity * standardWeight).toFixed(3))} kg</span>
-                                                                        {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
-                                                                            <span className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-1 rounded border border-orange-100">
-                                                                                <Scale className="h-2 w-2" /> Aangepast Totaal: {Number(item.actual_weight.toFixed(3))}kg
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        {isWeightAdjustable ? (
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="relative flex-1">
-                                                                        <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                                        <Input
-                                                                            type="text"
-                                                                            inputMode="decimal"
-                                                                            value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
-                                                                            onChange={(e) => {
-                                                                                const val = e.target.value
-                                                                                initEditing(item)
-                                                                                handleWeightChange(item.id, val)
-                                                                            }}
-                                                                            className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
-                                                                        />
-                                                                    </div>
-                                                                    <span className="text-xs font-bold text-muted-foreground uppercase">kg Totaal</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center border-t pt-2">
-                                                                    <div className="text-xs font-bold text-primary">Subtotaal: {formatPrice(rowTotalPrice)}</div>
-                                                                    <div className="flex gap-2">
-                                                                        <Button
-                                                                            size="sm"
-                                                                            disabled={!editData || saving === item.id || !hasChanged}
-                                                                            onClick={() => saveWeight(item.id, standardWeight, item.products?.unit_label)}
-                                                                            className="h-8 px-4"
-                                                                        >
-                                                                            {saving === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                                                        </Button>
-                                                                        {hasChanged && (
-                                                                            <Button variant="ghost" size="sm" onClick={() => setEditingItems(prev => {
-                                                                                const newState = { ...prev };
-                                                                                delete newState[item.id];
-                                                                                return newState;
-                                                                            })} className="h-8 text-destructive" title="Wijzigingen ongedaan maken">
-                                                                                <RotateCcw className="h-3 w-3" />
-                                                                            </Button>
-                                                                        )}
-                                                                        {item.actual_weight !== null && !hasChanged && !editData?.isExpanded && (
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => resetWeight(item.id, item.products?.unit_label)}
-                                                                                className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                title="Herstellen naar standaard productgewicht"
-                                                                            >
-                                                                                <RotateCcw className="h-3 w-3" />
-                                                                                <span className="text-[10px] ml-1">Reset</span>
-                                                                            </Button>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex justify-between items-center border-t pt-2 text-xs">
-                                                                <span className="text-muted-foreground italic">{isCompleted || isItemCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
-                                                                <span className="font-bold">Subtotaal: {formatPrice(rowTotalPrice)}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-
-                                        <table className="hidden md:table w-full text-sm">
-                                            <thead className="bg-muted/50 text-muted-foreground border-b text-[11px] uppercase tracking-wider">
-                                                <tr>
-                                                    <th className="py-3 px-4 text-left font-semibold w-10">Vink</th>
-                                                    <th className="py-3 px-4 text-left font-semibold">Product</th>
-                                                    <th className="py-3 px-4 text-center font-semibold">Originele Bestelling</th>
-                                                    <th className="py-3 px-4 text-right font-semibold">Aanpassen Gewicht / Aantal</th>
-                                                    <th className="py-3 px-4 text-right font-semibold w-24">Actie</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y">
-                                                {[...order.order_items].sort((a, b) => (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)).map((item) => {
-                                                    const isCheese = item.products?.category === 'Kaas'
-                                                    const unitLabel = item.products?.unit_label?.toLowerCase() || ''
-                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                                                    const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo || (item.products?.weight_per_unit && item.products.weight_per_unit > 0))
-
-                                                    const editData = editingItems[item.id]
-                                                    const standardWeight = item.products?.weight_per_unit || 1
-                                                    const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
-                                                    const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
-                                                    const displayWeight = totalWeight
-                                                    const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
-                                                    const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
-                                                    const isItemCompleted = optimisticCompletion[item.id] ?? item.is_completed
-
-                                                    const rowTotalPrice = item.products?.is_price_per_kilo
-                                                        ? (totalWeight * item.price_snapshot)
-                                                        : (standardWeight > 0 && isPieceBased)
-                                                            ? (totalWeight * (item.price_snapshot / standardWeight))
-                                                            : (displayQty * item.price_snapshot)
-
-                                                    return (
-                                                        <tr key={item.id} className={`transition-all duration-300 ${isItemCompleted ? 'bg-green-100/40 hover:bg-green-100/60' : 'hover:bg-muted/10'}`}>
-                                                            <td className="py-4 px-4 text-center">
-                                                                {!isCompleted && (
-                                                                    <button
-                                                                        onClick={() => handleToggleCompletion(item.id, isItemCompleted)}
-                                                                        className={`transition-colors ${isItemCompleted ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
-                                                                        title={isItemCompleted ? "Markeer als niet gereed" : "Markeer als gereed"}
-                                                                    >
-                                                                        <CheckCircle2 className={`h-5 w-5 ${isItemCompleted ? 'fill-green-600/10' : ''}`} />
-                                                                    </button>
-                                                                )}
-                                                            </td>
-                                                            <td className={`py-4 px-4 font-medium transition-all ${isItemCompleted ? 'text-green-900/60 line-through decoration-green-600/50 decoration-2' : ''}`}>
-                                                                {item.products?.name}
-                                                                {isCheese && (
-                                                                    <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
-                                                                )}
-                                                            </td>
-                                                            <td className="py-4 px-4 text-center">
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className="font-semibold text-base">{displayQty} {item.products?.unit_label}</span>
-                                                                    <span className="text-[10px] text-muted-foreground">{formatPrice(item.price_snapshot)} / {item.products?.unit_label}</span>
-                                                                    {isCheese && (
-                                                                        <div className="flex flex-col mt-2 gap-1 w-full max-w-[140px]">
-                                                                            <span className="text-[10px] text-muted-foreground bg-muted/50 p-1 rounded border border-border/50">
-                                                                                Standaard Totaal: {Number((item.quantity * standardWeight).toFixed(3))} kg
-                                                                            </span>
-                                                                            {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
-                                                                                <span className="text-[10px] text-blue-700 font-bold bg-blue-50 p-1 rounded flex items-center gap-1 justify-center border border-blue-100 shadow-sm">
-                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast Totaal: {Number(item.actual_weight.toFixed(3))}kg
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-
-                                                            <td className="py-4 px-4 text-right">
-                                                                <div className="flex flex-col items-end gap-2">
-                                                                    {isWeightAdjustable ? (
-                                                                        <div className="flex flex-col items-end gap-1">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <div className="relative group">
-                                                                                    <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                                                    <Input
-                                                                                        type="text"
-                                                                                        inputMode="decimal"
-                                                                                        value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
-                                                                                        onChange={(e) => {
-                                                                                            const val = e.target.value
-                                                                                            initEditing(item)
-                                                                                            handleWeightChange(item.id, val)
-                                                                                        }}
-                                                                                        className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
-                                                                                    />
-                                                                                </div>
-                                                                                <span className="text-sm font-bold text-muted-foreground uppercase">kg Totaal</span>
-                                                                            </div>
-
-                                                                            <div className="flex items-center gap-2">
-                                                                                {hasChanged && (
-                                                                                    <span className="text-[10px] text-orange-600 font-bold">
-                                                                                        Verschil: {(((totalWeight / initialWeight) - 1) * 100).toFixed(1)}%
-                                                                                    </span>
-                                                                                )}
-                                                                                <div className="text-xs font-bold text-primary">
-                                                                                    Subtotaal: {formatPrice(rowTotalPrice)}
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="flex flex-col items-end">
-                                                                            <span className="text-muted-foreground text-xs italic">{isCompleted || isItemCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
-                                                                            <div className="text-xs font-bold text-muted-foreground">
-                                                                                Subtotaal: {formatPrice(rowTotalPrice)}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-4 px-4 text-right">
-                                                                {!isCompleted && isCheese && (
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <Button
-                                                                            size="sm"
-                                                                            className="h-8 w-full gap-1"
-                                                                            disabled={!editData || saving === item.id || !hasChanged}
-                                                                            onClick={() => saveWeight(item.id, standardWeight, item.products?.unit_label)}
-                                                                        >
-                                                                            {saving === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                                                            Opslaan
-                                                                        </Button>
-                                                                        {hasChanged && (
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="h-6 text-[10px] text-muted-foreground hover:text-destructive w-full"
-                                                                                onClick={() => {
-                                                                                    setEditingItems(prev => {
-                                                                                        const newState = { ...prev }
-                                                                                        delete newState[item.id]
-                                                                                        return newState
-                                                                                    })
-                                                                                }}
-                                                                            >
-                                                                                <RotateCcw className="h-3 w-3 mr-1" />
-                                                                                Herstellen
-                                                                            </Button>
-                                                                        )}
-                                                                        {item.actual_weight !== null && !hasChanged && (
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                className="h-7 text-[10px] text-blue-600 border-blue-200 hover:bg-blue-50 w-full mt-1"
-                                                                                onClick={() => resetWeight(item.id, item.products?.unit_label)}
-                                                                            >
-                                                                                <RotateCcw className="h-3 w-3 mr-1" />
-                                                                                Terug naar Standaard
-                                                                            </Button>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="p-4 bg-muted/20 border-t flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div className="space-y-2 w-full md:w-auto">
-                                            <div className="text-[10px] md:text-xs text-muted-foreground italic">
-                                                * Totale prijsindicatie op basis van actuele gewichten.
-                                            </div>
-                                            {!isCompleted && (
-                                                <Button
-                                                    onClick={() => completeOrder(order)}
-                                                    disabled={completing === order.id}
-                                                    className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white gap-2 font-bold shadow-md hover:shadow-lg transition-all"
-                                                >
-                                                    {completing === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                                    Afronden & PDF
-                                                </Button>
-                                            )}
-                                            {isCompleted && (
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => generatePDF(order)}
-                                                    className="w-full md:w-auto gap-2"
-                                                >
-                                                    <FileText className="h-4 w-4" />
-                                                    Bekijk PDF
-                                                </Button>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
-                                            <span className="text-sm font-medium text-muted-foreground">Totaal:</span>
-                                            <div className="text-2xl font-black text-primary">
-                                                {formatPrice(order.order_items.reduce((sum, item) => {
-                                                    const editData = editingItems[item.id]
-                                                    const standardWeight = item.products?.weight_per_unit || 1
-                                                    const weight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
-
-                                                    const unitLabel = item.products?.unit_label?.toLowerCase() || ''
-                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                                                    const isPerKilo = item.products?.is_price_per_kilo
-
-                                                    if (isPerKilo) {
-                                                        return sum + (weight * item.price_snapshot)
-                                                    } else if (isPieceBased && standardWeight > 0) {
-                                                        return sum + (weight * (item.price_snapshot / standardWeight))
-                                                    } else {
-                                                        const pieces = Math.round(item.quantity)
-                                                        return sum + (pieces * item.price_snapshot)
-                                                    }
-                                                }, 0))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            )}
-                        </Card>
-                    )
-                })
+                filteredOrders.map(order => (
+                    <OrderCard
+                        key={order.id}
+                        order={order}
+                        isExpanded={expandedOrder === order.id}
+                        onToggleExpand={() => toggleOrder(order.id)}
+                        onEdit={() => {
+                            setEditingOrderId(order.id)
+                            setIsEditorOpen(true)
+                        }}
+                        onComplete={() => completeOrder(order)}
+                        formatDate={formatDate}
+                        formatPrice={formatPrice}
+                        editingItems={editingItems}
+                        optimisticCompletion={optimisticCompletion}
+                        saving={saving}
+                        completing={completing}
+                        handlers={{
+                            handleToggleCompletion,
+                            handleWeightChange,
+                            handleSaveWeight: (item, std) => saveWeight(item.id, std, item.products?.unit_label),
+                            handleResetWeight: resetWeight,
+                            handleCancelEdit: (itemId) => setEditingItems(prev => {
+                                const newState = { ...prev }
+                                delete newState[itemId]
+                                return newState
+                            }),
+                            handleInitEditing: initEditing
+                        }}
+                    />
+                ))
             )}
 
             {orderToEdit && (

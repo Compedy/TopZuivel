@@ -2,7 +2,9 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { Database } from '@/types'
 import { CartItem } from '@/components/ShopInterface'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { OrderSubmissionSchema } from '@/lib/schemas'
 import { env } from '@/lib/env'
@@ -19,7 +21,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
     const { companyName, email, cartItems, notes } = validated.data
 
     // Use admin client to bypass RLS for public orders
-    const supabase = createAdminClient() as any
+    const supabase: SupabaseClient<Database> = createAdminClient()
 
     // 1. Calculate Delivery Week (Week n+1)
     const getWeek = (d: Date) => {
@@ -44,7 +46,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
             notes: notes || null
         })
         .select()
-        .single())
+        .single() as any)
 
     if (orderError || !order) {
         console.error('Order creation failed:', orderError)
