@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { addProduct } from '@/app/admin/actions'
@@ -228,7 +229,9 @@ export default function AddProductForm({ products, onSuccess, onCancel }: AddPro
                     />
                     <Label htmlFor="is_active">Actief in winkel</Label>
                 </div>
+
             </div>
+
 
             <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>

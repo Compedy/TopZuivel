@@ -59,6 +59,8 @@ export interface Database {
                     created_at: string
                     week_number: number | null
                     status: string
+                    notes: string | null
+                    order_number: number
                 }
                 Insert: {
                     id?: string
@@ -67,6 +69,8 @@ export interface Database {
                     created_at?: string
                     week_number?: number | null
                     status?: string
+                    notes?: string | null
+                    order_number?: number
                 }
                 Update: {
                     id?: string
@@ -75,6 +79,8 @@ export interface Database {
                     created_at?: string
                     week_number?: number | null
                     status?: string
+                    notes?: string | null
+                    order_number?: number
                 }
             }
             order_items: {
@@ -85,6 +91,7 @@ export interface Database {
                     quantity: number
                     price_snapshot: number
                     actual_weight: number | null
+                    is_completed: boolean
                 }
                 Insert: {
                     id?: string
@@ -93,6 +100,7 @@ export interface Database {
                     quantity: number
                     price_snapshot: number
                     actual_weight?: number | null
+                    is_completed?: boolean
                 }
                 Update: {
                     id?: string
@@ -101,6 +109,7 @@ export interface Database {
                     quantity?: number
                     price_snapshot?: number
                     actual_weight?: number | null
+                    is_completed?: boolean
                 }
             }
             recurring_orders: {
@@ -112,6 +121,7 @@ export interface Database {
                     is_active: boolean
                     created_at: string
                     updated_at: string
+                    interval: 'weekly' | 'bi-weekly' | 'monthly' | 'manual'
                 }
                 Insert: {
                     id?: string
@@ -121,6 +131,7 @@ export interface Database {
                     is_active?: boolean
                     created_at?: string
                     updated_at?: string
+                    interval?: 'weekly' | 'bi-weekly' | 'monthly' | 'manual'
                 }
                 Update: {
                     id?: string
@@ -130,6 +141,7 @@ export interface Database {
                     is_active?: boolean
                     created_at?: string
                     updated_at?: string
+                    interval?: 'weekly' | 'bi-weekly' | 'monthly' | 'manual'
                 }
             }
             recurring_order_items: {

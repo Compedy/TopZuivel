@@ -37,6 +37,7 @@ export default async function AdminPage() {
                 quantity,
                 price_snapshot,
                 actual_weight,
+                is_completed,
                 products (name, unit_label, category, is_price_per_kilo, weight_per_unit, sort_order)
             )
         `)
@@ -63,7 +64,7 @@ export default async function AdminPage() {
                             <span className="text-xs md:text-sm">Winkel</span>
                         </Link>
                     </Button>
-                    <span className="text-xs text-muted-foreground hidden lg:inline-block">Admin Status</span>
+                    <span className="text-xs text-muted-foreground hidden lg:inline-block">Admin</span>
                     <form action={adminLogout}>
                         <button type="submit" className="text-xs md:text-sm font-medium text-destructive hover:underline">
                             Uitloggen

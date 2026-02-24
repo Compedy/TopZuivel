@@ -9,10 +9,13 @@ export interface CustomerMonthlyTotal {
         name: string
         unitLabel: string
         quantity: number
+        totalWeight: number
+        hasWeightInfo: boolean
         priceAtSnapshot: number
         totalLinePrice: number
     }[]
     grandTotal: number
+    orders: OrderWithItems[]
 }
 
 export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products: Product[]): Record<string, CustomerMonthlyTotal[]> {
@@ -45,21 +48,26 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
             const mostUsedCompanyName = Object.entries(customer.companyNames as Record<string, number>)
                 .reduce((a, b) => b[1] > a[1] ? b : a)[0]
 
-            const itemTotals: Record<string, { pieces: number, weight: number, price: number }> = {}
+            const itemTotals: Record<string, { pieces: number, weight: number, price: number, hasActualWeight: boolean }> = {}
 
             customer.orders.forEach((order: OrderWithItems) => {
                 order.order_items?.forEach((item) => {
                     const pid = item.product_id
                     if (!pid) return
                     if (!itemTotals[pid]) {
-                        itemTotals[pid] = { pieces: 0, weight: 0, price: item.price_snapshot }
+                        itemTotals[pid] = { pieces: 0, weight: 0, price: item.price_snapshot, hasActualWeight: false }
                     }
 
                     const isPieceBased = ['st', 'stuk', 'blok'].includes(item.products?.unit_label?.toLowerCase() || '')
                     if (isPieceBased) {
                         itemTotals[pid].pieces += Math.round(item.quantity)
-                        const stdWeight = item.products?.weight_per_unit || 1
-                        itemTotals[pid].weight += item.actual_weight ?? (item.quantity * stdWeight)
+                        const stdWeight = item.products?.weight_per_unit || 0
+                        if (item.actual_weight !== null) {
+                            itemTotals[pid].weight += item.actual_weight
+                            itemTotals[pid].hasActualWeight = true
+                        } else {
+                            itemTotals[pid].weight += item.quantity * stdWeight
+                        }
                     } else {
                         itemTotals[pid].weight += item.quantity // quantity IS weight for kg items
                     }
@@ -78,6 +86,8 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
                         unitLabel: p.unit_label,
                         // For display: pieces for stuks, weight for kg
                         quantity: isPieceBased ? total.pieces : total.weight,
+                        totalWeight: total.weight,
+                        hasWeightInfo: p.is_price_per_kilo || p.weight_per_unit > 0 || total.hasActualWeight || !isPieceBased,
                         priceAtSnapshot: total.price,
                         totalLinePrice: isPieceBased
                             ? (p.is_price_per_kilo
@@ -94,7 +104,8 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
                 mostUsedCompanyName,
                 month,
                 items,
-                grandTotal
+                grandTotal,
+                orders: customer.orders
             }
         })
     })

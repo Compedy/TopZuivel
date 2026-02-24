@@ -8,6 +8,10 @@ import { groupOrdersByMonthAndCustomer, CustomerMonthlyTotal } from '@/lib/invoi
 import { ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import OrderEditor from './OrderEditor'
+import { useRouter } from 'next/navigation'
+import { Pencil } from 'lucide-react'
+import { OrderWithItems } from '@/types'
 
 interface AdminInvoiceOverviewProps {
     products: Product[]
@@ -15,8 +19,11 @@ interface AdminInvoiceOverviewProps {
 }
 
 export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceOverviewProps) {
+    const router = useRouter()
     const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({})
     const [copiedId, setCopiedId] = useState<string | null>(null)
+    const [isEditorOpen, setIsEditorOpen] = useState(false)
+    const [orderToEdit, setOrderToEdit] = useState<OrderWithItems | null>(null)
 
     const monthlyData = useMemo(() => {
         const grouped = groupOrdersByMonthAndCustomer(orders, products)
@@ -50,7 +57,11 @@ Factuurgegevens voor: ${customer.mostUsedCompanyName} (${customer.email})
 Maand: ${formatMonthName(customer.month)}
 
 Producten:
-${customer.items.map(item => `- ${item.name}: ${item.quantity} ${item.unitLabel} @ ${formatPrice(item.priceAtSnapshot)} = ${formatPrice(item.totalLinePrice)}`).join('\n')}
+${customer.items.map(item => {
+            const isPieceBased = ['st', 'stuk', 'blok'].includes(item.unitLabel.toLowerCase())
+            const weightInfo = (isPieceBased && item.hasWeightInfo) ? ` (${item.totalWeight.toFixed(2)} kg)` : ''
+            return `- ${item.quantity} ${item.unitLabel} ${item.name}${weightInfo} @ ${formatPrice(item.priceAtSnapshot)} = ${formatPrice(item.totalLinePrice)}`
+        }).join('\n')}
 
 Totaal: ${formatPrice(customer.grandTotal)}
         `.trim()
@@ -102,17 +113,42 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                                     {copiedId === id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                                                 </Button>
                                             </div>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {customer.orders.map(order => (
+                                                    <Button
+                                                        key={order.id}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 text-[10px] gap-1"
+                                                        onClick={() => {
+                                                            setOrderToEdit(order)
+                                                            setIsEditorOpen(true)
+                                                        }}
+                                                    >
+                                                        <Pencil className="h-3 w-3" />
+                                                        Order #{order.order_number}
+                                                    </Button>
+                                                ))}
+                                            </div>
                                         </CardHeader>
                                         <CardContent className="pt-4">
                                             <div className="space-y-2">
-                                                {customer.items.map(item => (
-                                                    <div key={item.productId} className="flex justify-between text-sm">
-                                                        <span>
-                                                            <span className="font-medium">{item.quantity}×</span> {item.name}
-                                                        </span>
-                                                        <span className="text-muted-foreground">{formatPrice(item.totalLinePrice)}</span>
-                                                    </div>
-                                                ))}
+                                                {customer.items.map(item => {
+                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(item.unitLabel.toLowerCase())
+                                                    return (
+                                                        <div key={item.productId} className="flex justify-between text-sm">
+                                                            <span>
+                                                                <span className="font-medium">{item.quantity}×</span> {item.name}
+                                                                {isPieceBased && item.hasWeightInfo && (
+                                                                    <span className="text-xs text-muted-foreground ml-1">
+                                                                        ({item.totalWeight.toFixed(2)} kg)
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                            <span className="text-muted-foreground">{formatPrice(item.totalLinePrice)}</span>
+                                                        </div>
+                                                    )
+                                                })}
                                                 <div className="border-t pt-2 mt-4 flex justify-between font-bold">
                                                     <span>Maand Totaal</span>
                                                     <span className="text-primary">{formatPrice(customer.grandTotal)}</span>
@@ -131,6 +167,18 @@ Totaal: ${formatPrice(customer.grandTotal)}
                 <div className="p-12 text-center text-muted-foreground border-2 border-dashed rounded-lg">
                     Geen bestellingen gevonden voor facturatie.
                 </div>
+            )}
+
+            {orderToEdit && (
+                <OrderEditor
+                    open={isEditorOpen}
+                    onOpenChange={setIsEditorOpen}
+                    order={orderToEdit}
+                    products={products}
+                    onSuccess={() => {
+                        router.refresh()
+                    }}
+                />
             )}
         </div>
     )

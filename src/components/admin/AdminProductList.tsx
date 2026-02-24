@@ -7,14 +7,17 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { updateProduct, deleteProduct } from '@/app/admin/actions'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, Edit2, Save, X, Trash2 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2, Plus, Edit2, Save, X, Trash2, FileText } from 'lucide-react'
 import AddProductForm from './AddProductForm'
+import { useRouter } from 'next/navigation'
 
 interface AdminProductListProps {
     initialProducts: Product[]
 }
 
 export default function AdminProductList({ initialProducts }: AdminProductListProps) {
+    const router = useRouter()
     const [isAdding, setIsAdding] = useState(false)
 
     // Extract unique categories for the editors
@@ -39,7 +42,10 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
             {isAdding && (
                 <AddProductForm
                     products={initialProducts}
-                    onSuccess={() => setIsAdding(false)}
+                    onSuccess={() => {
+                        setIsAdding(false)
+                        router.refresh()
+                    }}
                     onCancel={() => setIsAdding(false)}
                 />
             )}
@@ -63,9 +69,11 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
 }
 
 function ProductRow({ product, categories }: { product: Product, categories: string[] }) {
+    const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState({
+        name: product.name,
         price: product.price,
         weight_per_unit: product.weight_per_unit,
         is_active: product.is_active,
@@ -78,6 +86,7 @@ function ProductRow({ product, categories }: { product: Product, categories: str
         const result = await updateProduct(product.id, data)
         if (result.success) {
             setIsEditing(false)
+            router.refresh() // Added router.refresh()
         } else {
             alert('Fout bij opslaan: ' + result.error)
         }
@@ -91,6 +100,8 @@ function ProductRow({ product, categories }: { product: Product, categories: str
         const result = await deleteProduct(product.id)
         if (!result.success) {
             alert('Fout bij verwijderen: ' + result.error)
+        } else {
+            router.refresh()
         }
         setLoading(false)
     }
@@ -98,21 +109,31 @@ function ProductRow({ product, categories }: { product: Product, categories: str
     if (isEditing) {
         return (
             <div className="p-3 bg-accent/10 border-l-4 border-primary animate-in fade-in space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 md:items-center">
-                <div className="md:col-span-4 flex flex-col gap-1">
-                    <div className="text-sm font-bold truncate">{product.name}</div>
-                    <Select
-                        value={data.category}
-                        onValueChange={(val: string) => setData({ ...data, category: val })}
-                    >
-                        <SelectTrigger className="h-7 text-[10px]">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {categories.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                <div className="md:col-span-4 flex flex-col gap-2">
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Product Naam</label>
+                        <Input
+                            value={data.name}
+                            onChange={(e) => setData({ ...data, name: e.target.value })}
+                            className="h-8 text-xs font-bold"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-bold text-muted-foreground">Categorie</label>
+                        <Select
+                            value={data.category}
+                            onValueChange={(val: string) => setData({ ...data, category: val })}
+                        >
+                            <SelectTrigger className="h-8 text-[10px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories.map(cat => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:contents">
                     <div className="space-y-1 md:col-span-2">
@@ -172,7 +193,7 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                             {data.is_active ? 'Actief' : 'Inactief'}
                         </Button>
                     </div>
-                    <div className="flex md:justify-end gap-1.5 md:col-span-2 items-end md:items-center col-span-2">
+                    <div className="flex md:justify-end gap-1.5 md:col-span-12 items-end md:items-center col-span-2 pt-2 border-t mt-2">
                         <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-8 px-2 text-xs" onClick={() => setIsEditing(false)} disabled={loading}>
                             <X className="h-4 w-4 mr-1 md:hidden" /> Annuleren
                         </Button>
@@ -236,7 +257,6 @@ function ProductRow({ product, categories }: { product: Product, categories: str
                 </div>
             </div>
 
-            {/* Mobile info row */}
             <div className="flex items-center gap-4 px-3 pb-3 pt-0 md:hidden text-xs text-muted-foreground">
                 <div className="font-bold text-foreground">€{product.price.toFixed(2)}</div>
                 <div>{product.weight_per_unit} {product.unit_label}</div>

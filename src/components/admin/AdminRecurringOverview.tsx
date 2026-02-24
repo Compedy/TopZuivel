@@ -132,6 +132,11 @@ export default function AdminRecurringOverview({ products }: AdminRecurringOverv
                                     <CardTitle className="text-base md:text-lg">{order.company_name}</CardTitle>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <p className="text-[10px] md:text-xs text-muted-foreground">{order.email}</p>
+                                        <Badge variant="outline" className="text-[9px] md:text-[10px] px-1.5 py-0 capitalize">
+                                            {order.interval === 'bi-weekly' ? 'Om de week' :
+                                                order.interval === 'monthly' ? 'Maandelijks' :
+                                                    order.interval === 'manual' ? 'Handmatig' : 'Wekelijks'}
+                                        </Badge>
                                         {order.price_modifier !== 0 && (
                                             <Badge variant={order.price_modifier < 0 ? "secondary" : "destructive"} className="text-[9px] md:text-[10px] px-1.5 py-0">
                                                 {order.price_modifier > 0 ? '+' : ''}{order.price_modifier}%

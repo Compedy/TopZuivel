@@ -7,14 +7,25 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { OrderWithItems } from '@/types'
-import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText } from 'lucide-react'
-import { updateOrderItemQuantity, updateOrderStatus, splitOrderItem } from '@/app/admin/actions'
+import { OrderWithItems, Product } from '@/types'
+import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText, Search } from 'lucide-react'
+import {
+    updateOrderItemQuantity,
+    updateOrderStatus,
+    updateOrderMetadata,
+    addOrderItem,
+    removeOrderItem,
+    toggleOrderItemCompletion
+} from '@/app/admin/actions'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import OrderEditor from './OrderEditor'
+import { Pencil } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface AdminOrderListProps {
     initialOrders: OrderWithItems[]
+    products: Product[]
 }
 
 const getDisplayQuantity = (qty: number, unit?: string) => {
@@ -25,8 +36,11 @@ const getDisplayQuantity = (qty: number, unit?: string) => {
     return qty
 }
 
-export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
+export default function AdminOrderList({ initialOrders, products }: AdminOrderListProps) {
+    const router = useRouter()
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+    const [isEditorOpen, setIsEditorOpen] = useState(false)
+    const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
     const [editingItems, setEditingItems] = useState<Record<string, {
         totalWeight: number,
         displayTotalWeight: string,
@@ -37,10 +51,28 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
     const [saving, setSaving] = useState<string | null>(null)
     const [completing, setCompleting] = useState<string | null>(null)
     const [showCompleted, setShowCompleted] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [optimisticCompletion, setOptimisticCompletion] = useState<Record<string, boolean>>({})
 
     const filteredOrders = useMemo(() => {
-        return initialOrders.filter(order => showCompleted ? true : order.status !== 'completed')
-    }, [initialOrders, showCompleted])
+        return initialOrders.filter(order => {
+            const matchesStatus = showCompleted ? true : order.status !== 'completed'
+            if (!matchesStatus) return false
+
+            if (!searchQuery) return true
+
+            const term = searchQuery.toLowerCase()
+            const orderNum = order.order_number?.toString().toLowerCase() || ''
+            const company = order.company_name?.toLowerCase() || ''
+            const email = order.email?.toLowerCase() || ''
+
+            return orderNum.includes(term) || company.includes(term) || email.includes(term)
+        })
+    }, [initialOrders, showCompleted, searchQuery])
+
+    const orderToEdit = useMemo(() => {
+        return initialOrders.find(o => o.id === editingOrderId)
+    }, [initialOrders, editingOrderId])
 
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('nl-NL', {
@@ -61,6 +93,29 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         setExpandedOrder(expandedOrder === orderId ? null : orderId)
     }
 
+    const handleToggleCompletion = async (itemId: string, currentStatus: boolean) => {
+        const newStatus = !currentStatus
+
+        // Optimistic update
+        setOptimisticCompletion(prev => ({ ...prev, [itemId]: newStatus }))
+
+        const result = await toggleOrderItemCompletion(itemId, newStatus)
+        if (!result.success) {
+            // Revert on failure
+            setOptimisticCompletion(prev => {
+                const newState = { ...prev }
+                delete newState[itemId]
+                return newState
+            })
+            alert('Fout bei bijwerken status: ' + result.error)
+        } else {
+            router.refresh()
+            // We keep the optimistic status until the refresh is complete
+            // (initialOrders update will naturally override it if we manage it correctly, 
+            // but for now, the render logic will prioritize local state)
+        }
+    }
+
     const initEditing = (item: any) => {
         if (editingItems[item.id]) return
 
@@ -68,7 +123,6 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         const unitLabel = item.products?.unit_label?.toLowerCase() || ''
         const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
 
-        // Use actual_weight if it exists, otherwise calculate from quantity
         const totalWeight = item.actual_weight ?? (item.quantity * standardWeight)
 
         const unitCount = Math.max(1, Math.ceil(item.quantity))
@@ -79,9 +133,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             units[unitCount - 1] = Math.max(0, totalWeight - sumOfOthers)
         }
 
-        const displayTotalWeight = isPieceBased
-            ? Number((totalWeight / (item.quantity || 1)).toFixed(3)).toString()
-            : Number(totalWeight.toFixed(3)).toString()
+        const displayTotalWeight = Number(totalWeight.toFixed(3)).toString()
 
         setEditingItems(prev => ({
             ...prev,
@@ -95,18 +147,34 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
         }))
     }
 
-    const handleWeightChange = (itemId: string, displayVal: string, quantity: number) => {
+    const handleWeightChange = (itemId: string, displayVal: string) => {
         setEditingItems(prev => {
             const item = prev[itemId]
             if (!item) return prev
             const num = parseFloat(displayVal.replace(',', '.'))
-            const rawTotal = (isNaN(num) ? 0 : num) * quantity
+            const totalWeight = isNaN(num) ? 0 : Math.round(num * 1000) / 1000
+
+            // Redistribute total weight evenly across units
+            const unitCount = item.units.length
+            const newUnits = Array(unitCount).fill(0)
+            if (unitCount > 0) {
+                const avg = totalWeight / unitCount
+                for (let i = 0; i < unitCount; i++) {
+                    newUnits[i] = Math.round(avg * 1000) / 1000
+                }
+                // Adjust last unit for rounding errors
+                const sumOthers = newUnits.slice(0, -1).reduce((a, b) => a + b, 0)
+                newUnits[unitCount - 1] = Math.round((totalWeight - sumOthers) * 1000) / 1000
+            }
+
             return {
                 ...prev,
                 [itemId]: {
                     ...item,
                     displayTotalWeight: displayVal,
-                    totalWeight: Math.round(rawTotal * 1000) / 1000
+                    totalWeight: totalWeight,
+                    units: newUnits,
+                    displayUnits: newUnits.map(u => Number(u.toFixed(3)).toString())
                 }
             }
         })
@@ -124,13 +192,16 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             newUnits[index] = isNaN(num) ? 0 : Math.round(num * 1000) / 1000
 
             const newTotal = newUnits.reduce((a, b) => a + b, 0)
+            const roundedTotal = Math.round(newTotal * 1000) / 1000
+
             return {
                 ...prev,
                 [itemId]: {
                     ...item,
                     units: newUnits,
                     displayUnits: newDisplayUnits,
-                    totalWeight: Math.round(newTotal * 1000) / 1000
+                    totalWeight: roundedTotal,
+                    displayTotalWeight: Number(roundedTotal.toFixed(3)).toString()
                 }
             }
         })
@@ -171,6 +242,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             setEditingItems(prev => {
                 const newState = { ...prev }
                 delete newState[itemId]
+                router.refresh()
                 return newState
             })
         } else {
@@ -187,34 +259,28 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
 
         const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel?.toLowerCase() || '')
         let result;
-        if (editData.isExpanded) {
-            // Persist as separate records
-            const quantities = editData.units.map(u => u / (standardWeight || 1))
-            result = await splitOrderItem(itemId, quantities)
+        if (isPieceBased) {
+            // For piece based items, we keep quantity (pieces) the same
+            // and store the total weight in actual_weight
+            const item = filteredOrders.flatMap(o => o.order_items).find(i => i.id === itemId)
+            const pieces = item ? Math.round(item.quantity) : 1
+
+            // If the manually entered weight is equal to standard, store null instead
+            const standardTotalWeight = pieces * (standardWeight || 1)
+            const isActuallyDifferent = Math.abs(editData.totalWeight - standardTotalWeight) > 0.0001
+            const weightToStore = isActuallyDifferent ? editData.totalWeight : null
+
+            result = await updateOrderItemQuantity(itemId, pieces, weightToStore)
         } else {
-            // Standard update
-            if (isPieceBased) {
-                // For piece based items, we keep quantity (pieces) the same
-                // and store the total weight in actual_weight
-                const item = filteredOrders.flatMap(o => o.order_items).find(i => i.id === itemId)
-                const pieces = item ? Math.round(item.quantity) : 1
-
-                // If the manually entered weight is equal to standard, store null instead
-                const standardTotalWeight = pieces * (standardWeight || 1)
-                const isActuallyDifferent = Math.abs(editData.totalWeight - standardTotalWeight) > 0.0001
-                const weightToStore = isActuallyDifferent ? editData.totalWeight : null
-
-                result = await updateOrderItemQuantity(itemId, pieces, weightToStore)
-            } else {
-                // For kg items, quantity IS the weight
-                result = await updateOrderItemQuantity(itemId, editData.totalWeight)
-            }
+            // For kg items, quantity IS the weight
+            result = await updateOrderItemQuantity(itemId, editData.totalWeight)
         }
 
         if (result.success) {
             setEditingItems(prev => {
                 const newState = { ...prev }
                 delete newState[itemId]
+                router.refresh()
                 return newState
             })
         } else {
@@ -270,6 +336,15 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
             doc.text(`Email: ${order.email}`, 15, 52)
             doc.text(`Besteldatum: ${orderDate}`, 15, 59)
+            doc.text(`Order #: ${order.order_number}`, 15, 66)
+            if (order.notes) {
+                const notesY = 73
+                doc.setFont('helvetica', 'bold')
+                doc.text('Opmerking:', 15, notesY)
+                doc.setFont('helvetica', 'normal')
+                const splitNotes = doc.splitTextToSize(order.notes, 160)
+                doc.text(splitNotes, 40, notesY)
+            }
 
             // Table
             const sortedItems = [...order.order_items].sort((a, b) =>
@@ -283,29 +358,18 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                 const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
 
-                let totalPrice;
-                if (isPerKilo) {
-                    totalPrice = weight * item.price_snapshot
-                } else if (isPieceBased && standardWeight > 0) {
-                    totalPrice = weight * (item.price_snapshot / standardWeight)
-                } else {
-                    totalPrice = item.quantity * item.price_snapshot
-                }
-
                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
 
                 return [
                     item.products?.name || 'Onbekend product',
                     `${displayQty} ${item.products?.unit_label || 'st'}`,
-                    `${weight.toFixed(3)} kg`,
-                    formatPrice(item.price_snapshot) + (isPerKilo ? '/kg' : ''),
-                    formatPrice(totalPrice)
+                    `${weight.toFixed(3)} kg`
                 ]
             })
 
             autoTable(doc, {
                 startY: 75,
-                head: [['Product', 'Aantal', 'Gewicht', 'Prijs (één)', 'Totaal']],
+                head: [['Product', 'Aantal', 'Gewicht']],
                 body: tableData,
                 theme: 'striped',
                 headStyles: { fillColor: [44, 62, 80] },
@@ -313,28 +377,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             })
 
             // Totals
-            const totalItems = order.order_items.reduce((sum, item) => sum + getDisplayQuantity(item.quantity, item.products?.unit_label), 0)
-            const totalPrice = order.order_items.reduce((sum, item) => {
-                const standardWeight = item.products?.weight_per_unit || 1
-                const weight = item.actual_weight ?? (item.quantity * standardWeight)
-                const isPerKilo = item.products?.is_price_per_kilo
-                const unitLabel = item.products?.unit_label?.toLowerCase() || ''
-                const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-
-                if (isPerKilo) {
-                    return sum + (weight * item.price_snapshot)
-                } else if (isPieceBased && standardWeight > 0) {
-                    return sum + (weight * (item.price_snapshot / standardWeight))
-                } else {
-                    return sum + (item.quantity * item.price_snapshot)
-                }
-            }, 0)
+            const totalLines = order.order_items.length
 
             const lastY = (doc as any).lastAutoTable.finalY + 10
             doc.setFont('helvetica', 'bold')
-            doc.text(`Totaal aantal items: ${totalItems}`, 15, lastY)
-            doc.setFontSize(14)
-            doc.text(`Totaal bedrag: ${formatPrice(totalPrice)}`, 15, lastY + 10)
+            doc.text(`Totaal aantal regels: ${totalLines}`, 15, lastY)
 
             // Footer
             doc.setFontSize(8)
@@ -364,12 +411,23 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
             }
         }
 
+        const allItemsCompleted = order.order_items.every(i => i.is_completed)
+        if (!allItemsCompleted) {
+            if (!confirm('Niet alle regels zijn gemarkeerd als gereed. Wilt u toch de PDF printen? De bestelling blijft in dat geval OPEN staan.')) {
+                return
+            }
+            // Just generate PDF and stay open
+            await generatePDF(order)
+            return
+        }
+
         setCompleting(order.id)
         try {
             const result = await updateOrderStatus(order.id, 'completed')
             if (result.success) {
                 await generatePDF(order)
                 setExpandedOrder(null)
+                router.refresh()
             } else {
                 alert('Fout bij afronden bestelling: ' + result.error)
             }
@@ -383,18 +441,31 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between bg-card p-4 rounded-lg border shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-card p-4 rounded-lg border shadow-sm gap-4">
                 <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-primary" />
                     <h2 className="font-bold text-lg">Bestellingen Beheer</h2>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Label htmlFor="show-completed" className="text-sm text-muted-foreground">Toon voltooid</Label>
-                    <Switch
-                        id="show-completed"
-                        checked={showCompleted}
-                        onCheckedChange={setShowCompleted}
-                    />
+
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Zoek op #, klant of email..."
+                            className="pl-8 h-9 text-xs"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="flex items-center space-x-2 whitespace-nowrap">
+                        <Label htmlFor="show-completed" className="text-sm text-muted-foreground">Toon voltooid</Label>
+                        <Switch
+                            id="show-completed"
+                            checked={showCompleted}
+                            onCheckedChange={setShowCompleted}
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -415,37 +486,75 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                             >
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold text-lg">{order.company_name || 'Onbekende Klant'}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-lg">{order.company_name || 'Onbekende Klant'}</span>
+                                            <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Order #{order.order_number}</span>
+                                        </div>
                                         <Badge variant={isCompleted ? 'outline' : (order.status === 'open' || order.status === 'pending') ? 'default' : 'secondary'} className={`text-[10px] uppercase ${isCompleted ? 'bg-green-100 text-green-700 border-green-200' : ''}`}>
                                             {order.status === 'completed' ? 'voldaan' : order.status === 'pending' ? 'open' : order.status}
                                         </Badge>
                                     </div>
                                     <span className="text-xs text-muted-foreground">{order.email}</span>
                                 </div>
-                                <div className="flex flex-col items-end gap-2 text-right">
-                                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                        {formatDate(order.created_at)}
-                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                    </span>
+                                <div className="flex items-center gap-4">
+                                    {!isCompleted && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                setEditingOrderId(order.id)
+                                                setIsEditorOpen(true)
+                                            }}
+                                        >
+                                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                        </Button>
+                                    )}
+                                    <div className="flex flex-col items-end gap-1 text-right">
+                                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                            {formatDate(order.created_at)}
+                                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                        </span>
+                                        {order.notes && !isExpanded && (
+                                            <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
+                                                Heeft opmerking
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
                             </CardHeader>
                             {isExpanded && (
                                 <CardContent className="p-0 animate-in slide-in-from-top-2 duration-200">
+                                    {order.notes && (
+                                        <div className="bg-yellow-50/50 p-4 border-b border-yellow-100">
+                                            <div className="flex items-start gap-2">
+                                                <FileText className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+                                                <div className="space-y-1">
+                                                    <span className="text-xs font-bold text-yellow-800 uppercase tracking-wider">Opmerking van klant:</span>
+                                                    <p className="text-sm text-yellow-900 leading-relaxed font-medium">
+                                                        {order.notes}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="md:overflow-x-auto">
                                         <div className="md:hidden space-y-4 p-4">
                                             {[...order.order_items].sort((a, b) => (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)).map((item) => {
                                                 const isCheese = item.products?.category === 'Kaas'
                                                 const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                                                 const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                                                const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo)
+                                                const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo || (item.products?.weight_per_unit && item.products.weight_per_unit > 0))
 
                                                 const editData = editingItems[item.id]
                                                 const standardWeight = item.products?.weight_per_unit || 1
                                                 const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
                                                 const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
-                                                const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
+                                                const displayWeight = totalWeight
                                                 const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
                                                 const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
+                                                const isItemCompleted = optimisticCompletion[item.id] ?? item.is_completed
 
                                                 const rowTotalPrice = item.products?.is_price_per_kilo
                                                     ? (totalWeight * item.price_snapshot)
@@ -454,23 +563,33 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                         : (displayQty * item.price_snapshot)
 
                                                 return (
-                                                    <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-muted/10">
+                                                    <div key={item.id} className={`border rounded-lg p-3 space-y-3 transition-all duration-300 ${isItemCompleted ? 'bg-green-100 border-green-200 shadow-inner' : 'bg-muted/10'}`}>
                                                         <div className="flex justify-between items-start">
-                                                            <div className="font-bold text-sm">
-                                                                {item.products?.name}
-                                                                {isCheese && (
-                                                                    <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
+                                                            <div className="flex items-start gap-2">
+                                                                {!isCompleted && (
+                                                                    <button
+                                                                        onClick={() => handleToggleCompletion(item.id, isItemCompleted)}
+                                                                        className={`mt-0.5 transition-colors ${isItemCompleted ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
+                                                                    >
+                                                                        <CheckCircle2 className={`h-5 w-5 ${isItemCompleted ? 'fill-green-600/10' : ''}`} />
+                                                                    </button>
                                                                 )}
+                                                                <div className={`font-bold text-sm ${isItemCompleted ? 'text-green-900 line-through opacity-70' : ''}`}>
+                                                                    {item.products?.name}
+                                                                    {isCheese && (
+                                                                        <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                             <div className="text-right">
                                                                 <div className="text-sm font-bold">{displayQty} {item.products?.unit_label}</div>
                                                                 <div className="text-[10px] text-muted-foreground">{formatPrice(item.price_snapshot)} / {item.products?.unit_label}</div>
                                                                 {isCheese && (
                                                                     <div className="text-[10px] text-muted-foreground flex flex-col items-end gap-0.5 mt-1">
-                                                                        <span>Standaard: {Number(standardWeight.toFixed(3))} kg/st</span>
+                                                                        <span>Standaard Totaal: {Number((item.quantity * standardWeight).toFixed(3))} kg</span>
                                                                         {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                             <span className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-1 rounded border border-orange-100">
-                                                                                <Scale className="h-2 w-2" /> Aangepast: {Number((item.actual_weight / (displayQty || 1)).toFixed(3))}kg/st
+                                                                                <Scale className="h-2 w-2" /> Aangepast Totaal: {Number(item.actual_weight.toFixed(3))}kg
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -480,62 +599,23 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
 
                                                         {isWeightAdjustable ? (
                                                             <div className="space-y-2">
-                                                                {!editData?.isExpanded ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="relative flex-1">
-                                                                            <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                                            <Input
-                                                                                type="text"
-                                                                                inputMode="decimal"
-                                                                                value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value
-                                                                                    initEditing(item)
-                                                                                    handleWeightChange(item.id, val, isPieceBased ? displayQty : 1)
-                                                                                }}
-                                                                                className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
-                                                                            />
-                                                                        </div>
-                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
-                                                                        {isPieceBased && (
-                                                                            <div className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
-                                                                                ({formatPrice(item.price_snapshot)} /st)
-                                                                            </div>
-                                                                        )}
-                                                                        {isPieceBased && item.quantity >= 1 && (
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="icon"
-                                                                                className="h-10 w-10 text-blue-600 border-blue-200"
-                                                                                onClick={() => {
-                                                                                    initEditing(item)
-                                                                                    setTimeout(() => toggleUnitsExpand(item.id), 0)
-                                                                                }}
-                                                                            >
-                                                                                <ListTree className="h-4 w-4" />
-                                                                            </Button>
-                                                                        )}
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="relative flex-1">
+                                                                        <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                                        <Input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value
+                                                                                initEditing(item)
+                                                                                handleWeightChange(item.id, val)
+                                                                            }}
+                                                                            className={`w-full h-10 pl-8 text-right font-bold border-2 ${hasChanged ? 'border-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
+                                                                        />
                                                                     </div>
-                                                                ) : (
-                                                                    <div className="bg-muted/50 p-2 rounded-md space-y-2 border shadow-inner">
-                                                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase text-muted-foreground px-1">
-                                                                            <span>Gewicht per stuk (kg)</span>
-                                                                            <button onClick={() => toggleUnitsExpand(item.id)} className="text-blue-600 underline">Sluiten</button>
-                                                                        </div>
-                                                                        {editData.units.map((unitWeight, idx) => (
-                                                                            <div key={idx} className="flex items-center gap-2">
-                                                                                <span className="text-[10px] w-4 text-muted-foreground">#{idx + 1}</span>
-                                                                                <Input
-                                                                                    type="text"
-                                                                                    inputMode="decimal"
-                                                                                    value={editData?.displayUnits[idx] || Number(unitWeight.toFixed(3)).toString()}
-                                                                                    onChange={(e) => handleUnitWeightChange(item.id, idx, e.target.value)}
-                                                                                    className="w-full h-8 text-right text-xs"
-                                                                                />
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
+                                                                    <span className="text-xs font-bold text-muted-foreground uppercase">kg Totaal</span>
+                                                                </div>
                                                                 <div className="flex justify-between items-center border-t pt-2">
                                                                     <div className="text-xs font-bold text-primary">Subtotaal: {formatPrice(rowTotalPrice)}</div>
                                                                     <div className="flex gap-2">
@@ -573,7 +653,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             </div>
                                                         ) : (
                                                             <div className="flex justify-between items-center border-t pt-2 text-xs">
-                                                                <span className="text-muted-foreground italic">{isCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
+                                                                <span className="text-muted-foreground italic">{isCompleted || isItemCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
                                                                 <span className="font-bold">Subtotaal: {formatPrice(rowTotalPrice)}</span>
                                                             </div>
                                                         )}
@@ -585,6 +665,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                         <table className="hidden md:table w-full text-sm">
                                             <thead className="bg-muted/50 text-muted-foreground border-b text-[11px] uppercase tracking-wider">
                                                 <tr>
+                                                    <th className="py-3 px-4 text-left font-semibold w-10">Vink</th>
                                                     <th className="py-3 px-4 text-left font-semibold">Product</th>
                                                     <th className="py-3 px-4 text-center font-semibold">Originele Bestelling</th>
                                                     <th className="py-3 px-4 text-right font-semibold">Aanpassen Gewicht / Aantal</th>
@@ -596,15 +677,16 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                     const isCheese = item.products?.category === 'Kaas'
                                                     const unitLabel = item.products?.unit_label?.toLowerCase() || ''
                                                     const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-                                                    const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo)
+                                                    const isWeightAdjustable = !isCompleted && (isCheese || unitLabel === 'kg' || item.products?.is_price_per_kilo || (item.products?.weight_per_unit && item.products.weight_per_unit > 0))
 
                                                     const editData = editingItems[item.id]
                                                     const standardWeight = item.products?.weight_per_unit || 1
                                                     const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
                                                     const totalWeight = editData ? editData.totalWeight : (item.actual_weight ?? (item.quantity * standardWeight))
-                                                    const displayWeight = isPieceBased ? (totalWeight / (displayQty || 1)) : totalWeight
+                                                    const displayWeight = totalWeight
                                                     const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
                                                     const hasChanged = Math.abs(totalWeight - initialWeight) > 0.0001
+                                                    const isItemCompleted = optimisticCompletion[item.id] ?? item.is_completed
 
                                                     const rowTotalPrice = item.products?.is_price_per_kilo
                                                         ? (totalWeight * item.price_snapshot)
@@ -613,8 +695,19 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                             : (displayQty * item.price_snapshot)
 
                                                     return (
-                                                        <tr key={item.id} className="hover:bg-muted/10 transition-colors">
-                                                            <td className="py-4 px-4 font-medium">
+                                                        <tr key={item.id} className={`transition-all duration-300 ${isItemCompleted ? 'bg-green-100/40 hover:bg-green-100/60' : 'hover:bg-muted/10'}`}>
+                                                            <td className="py-4 px-4 text-center">
+                                                                {!isCompleted && (
+                                                                    <button
+                                                                        onClick={() => handleToggleCompletion(item.id, isItemCompleted)}
+                                                                        className={`transition-colors ${isItemCompleted ? 'text-green-600' : 'text-muted-foreground hover:text-primary'}`}
+                                                                        title={isItemCompleted ? "Markeer als niet gereed" : "Markeer als gereed"}
+                                                                    >
+                                                                        <CheckCircle2 className={`h-5 w-5 ${isItemCompleted ? 'fill-green-600/10' : ''}`} />
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                            <td className={`py-4 px-4 font-medium transition-all ${isItemCompleted ? 'text-green-900/60 line-through decoration-green-600/50 decoration-2' : ''}`}>
                                                                 {item.products?.name}
                                                                 {isCheese && (
                                                                     <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
@@ -627,11 +720,11 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                     {isCheese && (
                                                                         <div className="flex flex-col mt-2 gap-1 w-full max-w-[140px]">
                                                                             <span className="text-[10px] text-muted-foreground bg-muted/50 p-1 rounded border border-border/50">
-                                                                                Standaard: {Number(standardWeight.toFixed(3))} kg/st
+                                                                                Standaard Totaal: {Number((item.quantity * standardWeight).toFixed(3))} kg
                                                                             </span>
                                                                             {typeof item.actual_weight === 'number' && isFinite(item.actual_weight) && (
                                                                                 <span className="text-[10px] text-blue-700 font-bold bg-blue-50 p-1 rounded flex items-center gap-1 justify-center border border-blue-100 shadow-sm">
-                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast: {Number((item.actual_weight / (displayQty || 1)).toFixed(3))}kg/st
+                                                                                    <Scale className="h-2.5 w-2.5" /> Aangepast Totaal: {Number(item.actual_weight.toFixed(3))}kg
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -643,73 +736,23 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                 <div className="flex flex-col items-end gap-2">
                                                                     {isWeightAdjustable ? (
                                                                         <div className="flex flex-col items-end gap-1">
-                                                                            {!editData?.isExpanded ? (
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <div className="relative group">
-                                                                                        <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                                                        <Input
-                                                                                            type="text"
-                                                                                            inputMode="decimal"
-                                                                                            value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
-                                                                                            onChange={(e) => {
-                                                                                                const val = e.target.value
-                                                                                                initEditing(item)
-                                                                                                handleWeightChange(item.id, val, isPieceBased ? displayQty : 1)
-                                                                                            }}
-                                                                                            className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
-                                                                                        />
-                                                                                    </div>
-                                                                                    <span className="text-sm font-bold text-muted-foreground uppercase">{isPieceBased ? 'kg/st' : 'kg'}</span>
-                                                                                    {isPieceBased && (
-                                                                                        <div className="text-[10px] font-bold text-muted-foreground ml-2 whitespace-nowrap">
-                                                                                            {formatPrice(item.price_snapshot)} /st
-                                                                                        </div>
-                                                                                    )}
-
-                                                                                    {isPieceBased && item.quantity >= 1 && (
-                                                                                        <Button
-                                                                                            variant="ghost"
-                                                                                            size="icon"
-                                                                                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                            title="Splits per stuk"
-                                                                                            onClick={() => {
-                                                                                                initEditing(item)
-                                                                                                setTimeout(() => toggleUnitsExpand(item.id), 0)
-                                                                                            }}
-                                                                                        >
-                                                                                            <ListTree className="h-4 w-4" />
-                                                                                        </Button>
-                                                                                    )}
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="relative group">
+                                                                                    <Scale className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                                                    <Input
+                                                                                        type="text"
+                                                                                        inputMode="decimal"
+                                                                                        value={editData?.displayTotalWeight ?? Number(displayWeight.toFixed(3)).toString()}
+                                                                                        onChange={(e) => {
+                                                                                            const val = e.target.value
+                                                                                            initEditing(item)
+                                                                                            handleWeightChange(item.id, val)
+                                                                                        }}
+                                                                                        className={`w-32 h-10 pl-8 text-right font-bold text-lg border-2 ${hasChanged ? 'border-orange-500 focus:ring-orange-500' : item.actual_weight !== null ? 'border-blue-400 bg-blue-50/30' : 'border-input'}`}
+                                                                                    />
                                                                                 </div>
-                                                                            ) : (
-                                                                                <div className="bg-muted/50 p-2 rounded-md space-y-2 border border-border shadow-inner min-w-[200px]">
-                                                                                    <div className="text-[10px] font-bold uppercase text-muted-foreground text-left px-1 flex justify-between gap-10">
-                                                                                        <span>Gewicht per stuk (kg)</span>
-                                                                                        <button
-                                                                                            onClick={() => toggleUnitsExpand(item.id)}
-                                                                                            className="hover:underline text-blue-600 capitalize text-[10px]"
-                                                                                        >
-                                                                                            Inklappen
-                                                                                        </button>
-                                                                                    </div>
-                                                                                    {editData.units.map((unitWeight, idx) => (
-                                                                                        <div key={idx} className="flex items-center gap-2">
-                                                                                            <span className="text-[10px] w-4 text-muted-foreground">#{idx + 1}</span>
-                                                                                            <Input
-                                                                                                type="text"
-                                                                                                inputMode="decimal"
-                                                                                                value={editData.displayUnits[idx] || Number(unitWeight.toFixed(3)).toString()}
-                                                                                                onChange={(e) => handleUnitWeightChange(item.id, idx, e.target.value)}
-                                                                                                className="w-full h-8 text-right text-xs"
-                                                                                            />
-                                                                                        </div>
-                                                                                    ))}
-                                                                                    <div className="pt-2 border-t flex justify-between items-center text-xs font-bold">
-                                                                                        <span>Stuks Totaal</span>
-                                                                                        <span className={`${hasChanged ? 'text-orange-600' : ''}`}>{Number(totalWeight.toFixed(3))} kg</span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
+                                                                                <span className="text-sm font-bold text-muted-foreground uppercase">kg Totaal</span>
+                                                                            </div>
 
                                                                             <div className="flex items-center gap-2">
                                                                                 {hasChanged && (
@@ -724,7 +767,7 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                                                                         </div>
                                                                     ) : (
                                                                         <div className="flex flex-col items-end">
-                                                                            <span className="text-muted-foreground text-xs italic">{isCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
+                                                                            <span className="text-muted-foreground text-xs italic">{isCompleted || isItemCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
                                                                             <div className="text-xs font-bold text-muted-foreground">
                                                                                 Subtotaal: {formatPrice(rowTotalPrice)}
                                                                             </div>
@@ -836,6 +879,18 @@ export default function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                         </Card>
                     )
                 })
+            )}
+
+            {orderToEdit && (
+                <OrderEditor
+                    open={isEditorOpen}
+                    onOpenChange={setIsEditorOpen}
+                    order={orderToEdit}
+                    products={products}
+                    onSuccess={() => {
+                        router.refresh()
+                    }}
+                />
             )}
         </div>
     )

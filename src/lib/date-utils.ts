@@ -65,8 +65,11 @@ export function groupOrdersByWeek(orders: OrderWithItems[]) {
     const groups: Record<string, { weekData: WeekData, orders: OrderWithItems[] }> = {};
 
     orders.forEach(order => {
+        // Since orders are now associated with delivery week (n+1)
+        // We shift the creation date 7 days forward to get the correct weekData for grouping
         const date = new Date(order.created_at);
-        const weekData = getCustomWeekData(date);
+        const deliveryDate = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const weekData = getCustomWeekData(deliveryDate);
         const key = `${weekData.year}-W${weekData.weekNumber}`;
 
         if (!groups[key]) {

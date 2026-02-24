@@ -101,7 +101,8 @@ export async function upsertRecurringOrder(
                 company_name: order.company_name,
                 email: order.email,
                 price_modifier: order.price_modifier,
-                is_active: order.is_active
+                is_active: order.is_active,
+                interval: order.interval
             })
             .eq('id', orderId)
 
@@ -117,7 +118,8 @@ export async function upsertRecurringOrder(
                 company_name: order.company_name!,
                 email: order.email!,
                 price_modifier: order.price_modifier || 0,
-                is_active: order.is_active ?? true
+                is_active: order.is_active ?? true,
+                interval: order.interval || 'weekly'
             })
             .select()
             .single()
@@ -177,6 +179,20 @@ export async function convertRecurringOrdersToReal() {
     const weekData = getCustomWeekData(new Date())
 
     for (const template of templates) {
+        // Skip if the interval doesn't match this week
+        if (template.interval === 'bi-weekly') {
+            if (weekData.weekNumber % 2 !== 0) continue
+        } else if (template.interval === 'monthly') {
+            const isLastWeek = (date: Date) => {
+                const currentMonth = date.getMonth()
+                const nextWeek = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000)
+                return nextWeek.getMonth() !== currentMonth
+            }
+            if (!isLastWeek(weekData.weekStart)) continue
+        } else if (template.interval === 'manual') {
+            continue
+        }
+
         // Create Order
         const { data: order, error: orderError } = await adminSupabase
             .from('orders')
@@ -314,52 +330,25 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
         console.error('Update order item error:', error)
         return { success: false, error: error.message }
     }
-
-    console.log(`[AdminAction] Successfully updated order item ${itemId}`)
     revalidatePath('/admin')
     return { success: true }
 }
 
-export async function splitOrderItem(itemId: string, quantities: number[]) {
+export async function toggleOrderItemCompletion(itemId: string, isCompleted: boolean) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
     const adminSupabase = createAdminClient() as any
-
-    // 1. Fetch original item
-    const { data: original, error: fetchError } = await adminSupabase
+    const { error } = await adminSupabase
         .from('order_items')
-        .select('*')
+        .update({ is_completed: isCompleted })
         .eq('id', itemId)
-        .single()
 
-    if (fetchError || !original) {
-        return { success: false, error: 'Origineel item niet gevonden' }
+    if (error) {
+        console.error('Toggle order item completion error:', error)
+        return { success: false, error: error.message }
     }
-
-    // 2. Delete original
-    const { error: deleteError } = await adminSupabase
-        .from('order_items')
-        .delete()
-        .eq('id', itemId)
-
-    if (deleteError) return { success: false, error: deleteError.message }
-
-    // 3. Insert new items
-    const { error: insertError } = await adminSupabase
-        .from('order_items')
-        .insert(quantities.map(qty => ({
-            order_id: original.order_id,
-            product_id: original.product_id,
-            quantity: qty,
-            price_snapshot: original.price_snapshot,
-            actual_weight: (original.actual_weight !== null && original.actual_weight !== undefined)
-                ? Math.round(((original.actual_weight / original.quantity) * qty) * 1000) / 1000
-                : null
-        })))
-
-    if (insertError) return { success: false, error: insertError.message }
 
     revalidatePath('/admin')
     return { success: true }
@@ -380,6 +369,70 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
     if (error) {
         console.error('Update order status error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
+export async function updateOrderMetadata(orderId: string, updates: { company_name?: string | null, email?: string | null, notes?: string | null, week_number?: number | null }) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('orders')
+        .update(updates)
+        .eq('id', orderId)
+
+    if (error) {
+        console.error('Update order metadata error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
+export async function addOrderItem(orderId: string, productId: string, quantity: number, priceSnapshot: number) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('order_items')
+        .insert({
+            order_id: orderId,
+            product_id: productId,
+            quantity: Math.round(quantity * 1000) / 1000,
+            price_snapshot: priceSnapshot
+        })
+
+    if (error) {
+        console.error('Add order item error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
+export async function removeOrderItem(itemId: string) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('order_items')
+        .delete()
+        .eq('id', itemId)
+
+    if (error) {
+        console.error('Remove order item error:', error)
         return { success: false, error: error.message }
     }
 

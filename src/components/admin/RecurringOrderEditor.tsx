@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Product, RecurringOrder, RecurringOrderItem } from '@/types'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
     Dialog,
     DialogContent,
@@ -43,7 +44,9 @@ export default function RecurringOrderEditor({
     )
     const [searchTerm, setSearchTerm] = useState('')
     const [displayCart, setDisplayCart] = useState<Record<string, string>>({})
+    const [interval, setInterval] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'manual'>(existingOrder?.interval || 'weekly')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [selectionOrder, setSelectionOrder] = useState<string[]>([])
 
     // Sync state when existingOrder changes or dialog opens
     useEffect(() => {
@@ -60,7 +63,9 @@ export default function RecurringOrderEditor({
                 ...acc,
                 [id]: (qty as number).toString()
             }), {}))
+            setInterval(existingOrder?.interval || 'weekly')
             setSearchTerm('')
+            setSelectionOrder(existingOrder?.recurring_order_items.map(i => i.product_id) || [])
         }
     }, [open, existingOrder])
 
@@ -76,8 +81,15 @@ export default function RecurringOrderEditor({
     const handleQuantityChange = (productId: string, qty: number, displayVal?: string) => {
         setCart((prev: Record<string, number>) => {
             const next = { ...prev }
-            if (qty <= 0) delete next[productId]
-            else next[productId] = qty
+            if (qty <= 0) {
+                delete next[productId]
+                setSelectionOrder(p => p.filter(id => id !== productId))
+            } else {
+                if (!next[productId]) {
+                    setSelectionOrder(p => [...p, productId]) // New at the bottom
+                }
+                next[productId] = qty
+            }
             return next
         })
         if (displayVal !== undefined) {
@@ -111,7 +123,8 @@ export default function RecurringOrderEditor({
                 company_name: companyName,
                 email: email,
                 price_modifier: parseFloat(priceModifier.replace(',', '.')) || 0,
-                is_active: existingOrder?.is_active ?? true
+                is_active: existingOrder?.is_active ?? true,
+                interval: interval
             },
             items
         )
@@ -127,14 +140,14 @@ export default function RecurringOrderEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+            <DialogContent className="sm:max-w-7xl w-full h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 border-b">
                     <DialogTitle>{existingOrder ? 'Periodieke Bestelling Bewerken' : 'Nieuwe Periodieke Bestelling'}</DialogTitle>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="company">Bedrijfsnaam</Label>
                             <Input
@@ -142,6 +155,7 @@ export default function RecurringOrderEditor({
                                 value={companyName}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompanyName(e.target.value)}
                                 placeholder="Bijv. Restaurant De Kroon"
+                                disabled={!!existingOrder}
                             />
                         </div>
                         <div className="space-y-2">
@@ -152,7 +166,30 @@ export default function RecurringOrderEditor({
                                 value={email}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                 placeholder="factuur@bedrijf.nl"
+                                disabled={!!existingOrder}
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="interval">Interval</Label>
+                            <Select
+                                value={interval}
+                                onValueChange={(val: any) => setInterval(val)}
+                            >
+                                <SelectTrigger id="interval">
+                                    <SelectValue placeholder="Selecteer interval" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="weekly">Wekelijks</SelectItem>
+                                    <SelectItem value="bi-weekly">Om de week</SelectItem>
+                                    <SelectItem value="monthly">Eén keer per maand</SelectItem>
+                                    <SelectItem value="manual">Handmatig (nooit automatisch)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground italic">
+                                {interval === 'bi-weekly' && "Elke even week."}
+                                {interval === 'monthly' && "Laatste volle week van de maand."}
+                                {interval === 'manual' && "Wordt nooit automatisch aangemaakt."}
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="modifier" className="flex items-center gap-1">
@@ -188,7 +225,7 @@ export default function RecurringOrderEditor({
                                     />
                                 </div>
                             </div>
-                            <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
+                            <div className="border rounded-md divide-y max-h-[600px] overflow-y-auto">
                                 {filteredProducts.map((product: Product) => (
                                     <div key={product.id} className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
                                         <div>
@@ -211,15 +248,16 @@ export default function RecurringOrderEditor({
                         {/* Selected List */}
                         <div className="space-y-4">
                             <h3 className="font-bold text-sm">Geselecteerde Producten</h3>
-                            <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto bg-muted/10">
+                            <div className="border rounded-md divide-y max-h-[600px] overflow-y-auto bg-muted/10">
                                 {Object.keys(cart).length === 0 ? (
                                     <div className="p-12 text-center text-muted-foreground text-xs italic">
                                         Nog geen producten geselecteerd
                                     </div>
                                 ) : (
-                                    Object.entries(cart).map(([pid, qty]: [string, number]) => {
+                                    selectionOrder.map((pid) => {
+                                        const qty = cart[pid]
                                         const product = products.find((p: Product) => p.id === pid)
-                                        if (!product) return null
+                                        if (!product || qty === undefined) return null
                                         return (
                                             <div key={pid} className="p-3 flex items-center justify-between bg-card">
                                                 <div className="flex-1">

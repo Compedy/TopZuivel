@@ -47,7 +47,7 @@ export default function AdminDashboard({ initialProducts, initialOrders }: Admin
                 <TabsTrigger value="products">Product Beheer</TabsTrigger>
             </TabsList>
             <TabsContent value="orders" className="mt-4">
-                <AdminOrderList initialOrders={initialOrders} />
+                <AdminOrderList initialOrders={initialOrders} products={initialProducts} />
             </TabsContent>
             <TabsContent value="weeks" className="mt-4">
                 <AdminWeekOverview orders={initialOrders} products={initialProducts} />
