@@ -12,8 +12,8 @@ interface ProductGridProps {
 
 export default function ProductGrid({ category, products, cart, onQuantityChange }: ProductGridProps) {
     return (
-        <section id={category} className="space-y-4 scroll-mt-32">
-            <h2 className="sticky top-28 z-20 bg-background/95 py-2 text-xl font-bold bg-muted/30 backdrop-blur-sm border-b border-border text-primary px-2 rounded-t-md">
+        <section id={category} className="space-y-4 scroll-mt-[180px]">
+            <h2 className="sticky top-[135px] z-20 bg-background/95 py-2 text-xl font-bold bg-muted/30 backdrop-blur-sm border-b border-border text-primary px-2 rounded-t-md">
                 {category}
             </h2>
             <div className="grid gap-4 sm:grid-cols-1">
