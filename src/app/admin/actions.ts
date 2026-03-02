@@ -507,3 +507,46 @@ export async function deleteProduct(id: string) {
     revalidatePath('/shop')
     return { success: true }
 }
+
+// STORE SETTINGS ACTIONS
+
+export async function getStoreSettings(key: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminSupabase = createAdminClient() as any
+    const { data, error } = await adminSupabase
+        .from('store_settings')
+        .select('value')
+        .eq('key', key)
+        .single()
+
+    if (error) {
+        if (error.code === 'PGRST116') return { success: true, data: null } // Not found
+        console.error('getStoreSettings error:', error)
+        return { success: false, error: error.message }
+    }
+    return { success: true, data: data.value }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateStoreSettings(key: string, value: any) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('store_settings')
+        .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+
+    if (error) {
+        console.error('updateStoreSettings error:', error)
+        return { success: false, error: error.message }
+    }
+
+    // Invalidate everything to ensure shop state updates immediately
+    revalidatePath('/')
+    revalidatePath('/admin')
+
+    return { success: true }
+}

@@ -28,10 +28,10 @@ import { submitOrder } from '@/app/actions'
 interface CartModalProps {
     cartItems: CartItem[]
     onSubmitSuccess: () => void
-    // userId: string // Removed as we now use manual input
+    disabled?: boolean
 }
 
-export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps) {
+export default function CartModal({ cartItems, onSubmitSuccess, disabled = false }: CartModalProps) {
     const [open, setOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
@@ -97,7 +97,7 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
             {totalItems > 0 && (
                 <div className="fixed bottom-6 right-6 z-50">
                     <Button
-                        className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center relative"
+                        className="h-14 w-14 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center relative cursor-pointer"
                         onClick={() => setOpen(true)}
                     >
                         <ShoppingCart className="h-6 w-6" />
@@ -190,8 +190,8 @@ export default function CartModal({ cartItems, onSubmitSuccess }: CartModalProps
 
                             <DialogFooter className="sm:justify-end gap-2 mt-4">
                                 <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Annuleren</Button>
-                                <Button onClick={() => handleSubmit()} disabled={isSubmitting || cartItems.length === 0 || !companyName || !email} className="bg-primary text-primary-foreground">
-                                    {isSubmitting ? 'Versturen...' : 'Bestelling Plaatsen'}
+                                <Button onClick={() => handleSubmit()} disabled={isSubmitting || cartItems.length === 0 || !companyName || !email || disabled} className="bg-primary text-primary-foreground">
+                                    {isSubmitting ? 'Versturen...' : disabled ? 'Gesloten' : 'Bestelling Plaatsen'}
                                 </Button>
                             </DialogFooter>
                         </div>

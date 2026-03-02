@@ -11,6 +11,7 @@ import AdminWeekOverview from './AdminWeekOverview'
 import AdminInvoiceOverview from './AdminInvoiceOverview'
 import AdminRecurringOverview from './AdminRecurringOverview'
 import AdminStockCount from './AdminStockCount'
+import AdminSettings from './AdminSettings'
 
 interface AdminDashboardProps {
     initialProducts: Product[]
@@ -34,17 +35,19 @@ export default function AdminDashboard({ initialProducts, initialOrders }: Admin
                         <SelectItem value="recurring">Periodiek</SelectItem>
                         <SelectItem value="stock">Voorraad Tellen</SelectItem>
                         <SelectItem value="products">Product Beheer</SelectItem>
+                        <SelectItem value="settings">Instellingen</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
 
-            <TabsList className="hidden md:grid w-full grid-cols-6 max-w-[1100px] mb-4">
+            <TabsList className="hidden md:grid w-full grid-cols-7 max-w-[1200px] mb-4">
                 <TabsTrigger value="orders">Bestellingen</TabsTrigger>
                 <TabsTrigger value="weeks">Week Overzicht</TabsTrigger>
                 <TabsTrigger value="billing">Facturatie</TabsTrigger>
                 <TabsTrigger value="recurring">Periodiek</TabsTrigger>
                 <TabsTrigger value="stock">Voorraad Tellen</TabsTrigger>
                 <TabsTrigger value="products">Product Beheer</TabsTrigger>
+                <TabsTrigger value="settings">Instellingen</TabsTrigger>
             </TabsList>
             <TabsContent value="orders" className="mt-4">
                 <AdminOrderList initialOrders={initialOrders} products={initialProducts} />
@@ -63,6 +66,9 @@ export default function AdminDashboard({ initialProducts, initialOrders }: Admin
             </TabsContent>
             <TabsContent value="products" className="mt-4">
                 <AdminProductList initialProducts={initialProducts} />
+            </TabsContent>
+            <TabsContent value="settings" className="mt-4">
+                <AdminSettings />
             </TabsContent>
         </Tabs>
     )

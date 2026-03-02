@@ -164,6 +164,26 @@ export interface Database {
                     quantity?: number
                 }
             }
+            store_settings: {
+                Row: {
+                    id: string
+                    key: string
+                    value: any // Using any or specific interface depending on what we store
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    key: string
+                    value: any
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    key?: string
+                    value?: any
+                    updated_at?: string
+                }
+            }
         }
     }
 }

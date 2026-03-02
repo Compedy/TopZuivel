@@ -34,6 +34,14 @@ export default async function Home() {
     return <div>Er is een fout opgetreden bij het laden van de producten.</div>
   }
 
+  const { data: settingsData } = await supabase
+    .from('store_settings')
+    .select('value')
+    .eq('key', 'availability')
+    .single()
+
+  const openDays: number[] = settingsData?.value?.open_days || [1, 2, 3, 4, 5]
+
   return (
     <div className="min-h-screen bg-background pb-20 font-sans tracking-tight">
       <header className="sticky top-0 z-50 flex h-20 items-center border-b border-border/40 bg-primary/95 backdrop-blur-md px-6 shadow-lg gap-4">
@@ -61,7 +69,7 @@ export default async function Home() {
         </div>
       </header>
       <main className="container mx-auto p-6 max-w-5xl">
-        <ShopInterface products={products || []} />
+        <ShopInterface products={products || []} openDays={openDays} />
       </main>
     </div>
   )
