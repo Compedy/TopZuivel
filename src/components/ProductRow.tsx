@@ -10,10 +10,11 @@ interface ProductRowProps {
     product: Product
     quantity: number
     onQuantityChange: (productId: string, val: number) => void
+    isOpen: boolean
 }
 
-export default function ProductRow({ product, quantity, onQuantityChange }: ProductRowProps) {
-
+export default function ProductRow({ product, quantity, onQuantityChange, isOpen }: ProductRowProps) {
+    // ... existing state and logic ...
     const [displayQuantity, setDisplayQuantity] = useState(quantity.toString())
 
     // Sync display quantity when the actual quantity prop changes (e.g. from buttons or other source)
@@ -69,36 +70,38 @@ export default function ProductRow({ product, quantity, onQuantityChange }: Prod
                 </div>
 
                 {/* Controls */}
-                <div className="col-span-12 md:col-span-3 flex items-center justify-end gap-2 mt-2 md:mt-0">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={handleDecrement}
-                        disabled={quantity === 0}
-                    >
-                        <Minus className="h-4 w-4" />
-                    </Button>
-                    <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={displayQuantity}
-                        onChange={handleInputChange}
-                        className="h-8 w-16 text-center"
-                    />
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={handleIncrement}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                </div>
+                {isOpen && (
+                    <div className="col-span-12 md:col-span-3 flex items-center justify-end gap-2 mt-2 md:mt-0">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={handleDecrement}
+                            disabled={quantity === 0}
+                        >
+                            <Minus className="h-4 w-4" />
+                        </Button>
+                        <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={displayQuantity}
+                            onChange={handleInputChange}
+                            className="h-8 w-16 text-center"
+                        />
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={handleIncrement}
+                        >
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Estimated Weight/Price hint for Per Kilo items */}
-            {quantity > 0 && product.is_price_per_kilo && (
+            {isOpen && quantity > 0 && product.is_price_per_kilo && (
                 <div className="mt-2 text-xs text-right text-muted-foreground border-t border-border/50 pt-2">
                     Schatting: {product.weight_per_unit}kg x {quantity}st ≈ {quantity * product.weight_per_unit}kg
                     <br />
@@ -107,7 +110,7 @@ export default function ProductRow({ product, quantity, onQuantityChange }: Prod
             )}
 
             {/* Total hint for normal items */}
-            {quantity > 0 && !product.is_price_per_kilo && (
+            {isOpen && quantity > 0 && !product.is_price_per_kilo && (
                 <div className="mt-2 text-xs text-right text-muted-foreground md:hidden border-t border-border/50 pt-2">
                     Totaal: {formatPrice(product.price * quantity)}
                 </div>

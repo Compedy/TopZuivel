@@ -8,9 +8,10 @@ interface ProductGridProps {
     products: Product[]
     cart: Record<string, number>
     onQuantityChange: (productId: string, quantity: number) => void
+    isOpen: boolean
 }
 
-export default function ProductGrid({ category, products, cart, onQuantityChange }: ProductGridProps) {
+export default function ProductGrid({ category, products, cart, onQuantityChange, isOpen }: ProductGridProps) {
     return (
         <section id={category} className="space-y-4 scroll-mt-[170px]">
             <h2 className="sticky top-32 z-20 bg-background/95 py-2 text-xl font-bold bg-muted/30 backdrop-blur-sm border-b border-border text-primary px-2 rounded-t-md">
@@ -21,7 +22,7 @@ export default function ProductGrid({ category, products, cart, onQuantityChange
                     <div className="col-span-6 md:col-span-5">Product</div>
                     <div className="col-span-3 md:col-span-2 text-right">Prijs</div>
                     <div className="col-span-3 md:col-span-2 text-right">Eenheid</div>
-                    <div className="col-span-12 md:col-span-3 text-right">Aantal</div>
+                    {isOpen && <div className="col-span-12 md:col-span-3 text-right">Aantal</div>}
                 </div>
                 {products.map(product => (
                     <ProductRow
@@ -29,6 +30,7 @@ export default function ProductGrid({ category, products, cart, onQuantityChange
                         product={product}
                         quantity={cart[product.id] || 0}
                         onQuantityChange={onQuantityChange}
+                        isOpen={isOpen}
                     />
                 ))}
             </div>

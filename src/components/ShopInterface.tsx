@@ -85,13 +85,10 @@ export default function ShopInterface({ products, openDays }: ShopInterfaceProps
     return (
         <div className="space-y-8">
             {!isOpen && (
-                <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-900 p-4 rounded-md flex items-start gap-4 shadow-sm mb-6 max-w-3xl mx-auto">
-                    <AlertCircle className="h-6 w-6 text-amber-600 mt-0.5 shrink-0" />
+                <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-900 p-8 rounded-md flex items-center justify-center gap-6 shadow-md mb-10 max-w-4xl mx-auto">
+                    <AlertCircle className="h-10 w-10 text-amber-600 shrink-0" />
                     <div>
-                        <h3 className="font-bold text-amber-800 text-lg">De webshop is momenteel gesloten</h3>
-                        <p className="text-sm mt-1 text-amber-900/90 font-medium">
-                            U kunt vandaag onze producten bekijken, maar helaas geen bestellingen plaatsen. De besteldagen zijn beperkt door de beheerder.
-                        </p>
+                        <h3 className="font-bold text-amber-800 text-2xl">De webshop is momenteel gesloten</h3>
                     </div>
                 </div>
             )}
@@ -108,14 +105,17 @@ export default function ShopInterface({ products, openDays }: ShopInterfaceProps
                     products={groupedProducts[category]}
                     cart={cart}
                     onQuantityChange={handleQuantityChange}
+                    isOpen={isOpen}
                 />
             ))}
 
-            <CartModal
-                cartItems={cartItems}
-                onSubmitSuccess={resetCart}
-                disabled={!isOpen}
-            />
+            {isOpen && (
+                <CartModal
+                    cartItems={cartItems}
+                    onSubmitSuccess={resetCart}
+                    disabled={!isOpen}
+                />
+            )}
         </div>
     )
 }
