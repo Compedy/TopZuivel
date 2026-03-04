@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { updateOrderMetadata, addOrderItem, removeOrderItem, updateOrderItemQuantity } from '@/app/admin/actions'
 import { Plus, Trash2, Search, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface OrderEditorProps {
     open: boolean
@@ -39,6 +40,7 @@ export default function OrderEditor({
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [localQuantities, setLocalQuantities] = useState<Record<string, string>>({})
     const [localItems, setLocalItems] = useState<OrderWithItems['order_items']>([])
+    const isCompleted = order.status === 'completed'
 
     // Sync metadata ONLY when the order ID itself changes
     useEffect(() => {
@@ -226,45 +228,47 @@ export default function OrderEditor({
                         </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t">
-                        {/* Product Picker */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-sm">Producten Toevoegen</h3>
-                                <div className="relative w-48">
-                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Zoek product..."
-                                        className="pl-8 h-9 text-xs"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
+                    <div className={cn("grid grid-cols-1 gap-8 pt-4 border-t", isCompleted ? "md:grid-cols-1" : "md:grid-cols-2")}>
+                        {/* Product Picker - Hidden when completed */}
+                        {!isCompleted && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-sm">Producten Toevoegen</h3>
+                                    <div className="relative w-48">
+                                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Zoek product..."
+                                            className="pl-8 h-9 text-xs"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="border rounded-md divide-y max-h-[500px] overflow-y-auto">
+                                    {filteredProducts.map((product: Product) => (
+                                        <div key={product.id} className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                                            <div>
+                                                <p className="font-medium text-sm">{product.name}</p>
+                                                <p className="text-xs text-muted-foreground">{product.category} • €{product.price.toFixed(2)} / {product.unit_label}</p>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-8 w-8 rounded-full p-0"
+                                                onClick={() => handleAddItem(product)}
+                                                disabled={isSubmitting}
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="border rounded-md divide-y max-h-[500px] overflow-y-auto">
-                                {filteredProducts.map((product: Product) => (
-                                    <div key={product.id} className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
-                                        <div>
-                                            <p className="font-medium text-sm">{product.name}</p>
-                                            <p className="text-xs text-muted-foreground">{product.category} • €{product.price.toFixed(2)} / {product.unit_label}</p>
-                                        </div>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-8 w-8 rounded-full p-0"
-                                            onClick={() => handleAddItem(product)}
-                                            disabled={isSubmitting}
-                                        >
-                                            <Plus className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        )}
 
                         {/* Current Items */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-sm">Bestelde Producten</h3>
+                            <h3 className="font-bold text-sm">Bestelde Producten {isCompleted && "(Alleen-lezen)"}</h3>
                             <div className="border rounded-md divide-y max-h-[500px] overflow-y-auto bg-muted/10">
                                 {localItems.length === 0 ? (
                                     <div className="p-12 text-center text-muted-foreground text-xs italic">
@@ -280,22 +284,31 @@ export default function OrderEditor({
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Input
-                                                    type="text"
-                                                    inputMode="decimal"
-                                                    className="w-16 h-8 text-xs text-right"
-                                                    value={localQuantities[item.id] ?? item.quantity.toString()}
-                                                    onChange={(e) => handleQtyChange(item.id, e.target.value)}
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                    onClick={() => handleRemoveItem(item.id)}
-                                                    disabled={isSubmitting}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {isCompleted ? (
+                                                    <span className="text-sm font-bold px-3">
+                                                        {localQuantities[item.id] ?? item.quantity.toString()}
+                                                    </span>
+                                                ) : (
+                                                    <Input
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        className="w-16 h-8 text-xs text-right"
+                                                        value={localQuantities[item.id] ?? item.quantity.toString()}
+                                                        onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                                                    />
+                                                )}
+
+                                                {!isCompleted && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                     ))
