@@ -75,19 +75,17 @@ export default function OrderCard({
                     <span className="text-xs text-muted-foreground">{order.email}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                    {!isCompleted && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                onEdit()
-                            }}
-                        >
-                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                        </Button>
-                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onEdit()
+                        }}
+                    >
+                        <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                    </Button>
                     <div className="flex flex-col items-end gap-1 text-right">
                         <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                             {formatDate(order.created_at)}
