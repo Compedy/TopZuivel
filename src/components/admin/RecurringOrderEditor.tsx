@@ -155,7 +155,6 @@ export default function RecurringOrderEditor({
                                 value={companyName}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompanyName(e.target.value)}
                                 placeholder="Bijv. Restaurant De Kroon"
-                                disabled={!!existingOrder}
                             />
                         </div>
                         <div className="space-y-2">
@@ -166,7 +165,6 @@ export default function RecurringOrderEditor({
                                 value={email}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                 placeholder="factuur@bedrijf.nl"
-                                disabled={!!existingOrder}
                             />
                         </div>
                         <div className="space-y-2">
