@@ -570,3 +570,33 @@ export async function deleteOrder(id: string) {
     revalidatePath('/admin')
     return { success: true }
 }
+
+export async function deleteInvoice(email: string, monthKey: string) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    // Parse monthKey (YYYY-MM)
+    const [year, month] = monthKey.split('-').map(Number)
+    const startDate = new Date(year, month - 1, 1).toISOString()
+    const endDate = new Date(year, month, 0, 23, 59, 59).toISOString()
+
+    console.log(`[AdminAction] Deleting invoice for ${email} in ${monthKey} (${startDate} to ${endDate})`)
+
+    const { error } = await adminSupabase
+        .from('orders')
+        .delete()
+        .eq('email', email)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+
+    if (error) {
+        console.error('Delete invoice error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}

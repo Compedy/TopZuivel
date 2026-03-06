@@ -5,12 +5,12 @@ import { useState, useMemo } from 'react'
 import { Product } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { groupOrdersByMonthAndCustomer, CustomerMonthlyTotal } from '@/lib/invoice-utils'
-import { ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Check, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import OrderEditor from './OrderEditor'
 import { useRouter } from 'next/navigation'
-import { Pencil } from 'lucide-react'
+import { deleteInvoice } from '@/app/admin/actions'
 import { OrderWithItems } from '@/types'
 
 interface AdminInvoiceOverviewProps {
@@ -24,6 +24,7 @@ export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceO
     const [copiedId, setCopiedId] = useState<string | null>(null)
     const [isEditorOpen, setIsEditorOpen] = useState(false)
     const [orderToEdit, setOrderToEdit] = useState<OrderWithItems | null>(null)
+    const [isDeleting, setIsDeleting] = useState<string | null>(null)
 
     const monthlyData = useMemo(() => {
         const grouped = groupOrdersByMonthAndCustomer(orders, products)
@@ -84,6 +85,24 @@ Totaal: ${formatPrice(customer.grandTotal)}
         setTimeout(() => setCopiedId(null), 2000)
     }
 
+    const handleDeleteInvoice = async (customer: CustomerMonthlyTotal) => {
+        const confirmMsg = `Weet u zeker dat u de volledige factuur voor ${customer.mostUsedCompanyName} (${formatMonthName(customer.month)}) wilt verwijderen?\n\nHiermee worden ALLE ${customer.orders.length} onderliggende bestellingen permanent verwijderd!`
+        if (!confirm(confirmMsg)) return
+
+        const deleteId = `${customer.month}-${customer.email}`
+        setIsDeleting(deleteId)
+
+        const result = await deleteInvoice(customer.email, customer.month)
+
+        setIsDeleting(null)
+
+        if (result.success) {
+            router.refresh()
+        } else {
+            alert('Fout bij verwijderen factuur: ' + result.error)
+        }
+    }
+
     return (
         <div className="space-y-6">
             {monthlyData.sortedMonths.map(month => (
@@ -123,6 +142,15 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                                     onClick={() => copyToClipboard(customer)}
                                                 >
                                                     {copiedId === id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={() => handleDeleteInvoice(customer)}
+                                                    disabled={isDeleting === id}
+                                                >
+                                                    {isDeleting === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                 </Button>
                                             </div>
                                             <div className="flex flex-wrap gap-1 mt-2">
