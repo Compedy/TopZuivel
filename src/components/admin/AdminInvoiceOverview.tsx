@@ -140,11 +140,11 @@ Totaal: ${formatPrice(customer.grandTotal)}
                     </div>
 
                     {expandedMonths[month] && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
+                        <div className="columns-1 md:columns-2 gap-4 pl-6 space-y-4 md:space-y-0">
                             {monthlyData.grouped[month].map(customer => {
                                 const id = `${month}-${customer.email}`
                                 return (
-                                    <Card key={id} className="relative overflow-hidden group">
+                                    <Card key={id} className="relative overflow-hidden group mb-4 break-inside-avoid shadow-sm hover:shadow-md transition-shadow">
                                         <CardHeader className="pb-2 bg-muted/30">
                                             <div className="flex justify-between items-start">
                                                 <div>
