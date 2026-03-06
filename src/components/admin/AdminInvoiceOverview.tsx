@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import OrderEditor from './OrderEditor'
 import { useRouter } from 'next/navigation'
-import { deleteInvoice } from '@/app/admin/actions'
+import { deleteInvoice, deleteOrder } from '@/app/admin/actions'
 import { OrderWithItems } from '@/types'
 
 interface AdminInvoiceOverviewProps {
@@ -25,6 +25,7 @@ export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceO
     const [isEditorOpen, setIsEditorOpen] = useState(false)
     const [orderToEdit, setOrderToEdit] = useState<OrderWithItems | null>(null)
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
+    const [isDeletingOrder, setIsDeletingOrder] = useState<string | null>(null)
 
     const monthlyData = useMemo(() => {
         const grouped = groupOrdersByMonthAndCustomer(orders, products)
@@ -103,6 +104,21 @@ Totaal: ${formatPrice(customer.grandTotal)}
         }
     }
 
+    const handleDeleteOrder = async (e: React.MouseEvent, order: OrderWithItems) => {
+        e.stopPropagation()
+        if (!confirm(`Weet u zeker dat u order #${order.order_number} wilt verwijderen?`)) return
+
+        setIsDeletingOrder(order.id)
+        const result = await deleteOrder(order.id)
+        setIsDeletingOrder(null)
+
+        if (result.success) {
+            router.refresh()
+        } else {
+            alert('Fout bij verwijderen order: ' + result.error)
+        }
+    }
+
     return (
         <div className="space-y-6">
             {monthlyData.sortedMonths.map(month => (
@@ -153,21 +169,31 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                                     {isDeleting === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                 </Button>
                                             </div>
-                                            <div className="flex flex-wrap gap-1 mt-2">
+                                            <div className="flex flex-wrap gap-2 mt-2">
                                                 {customer.orders.map(order => (
-                                                    <Button
-                                                        key={order.id}
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-7 text-[10px] gap-1"
-                                                        onClick={() => {
-                                                            setOrderToEdit(order)
-                                                            setIsEditorOpen(true)
-                                                        }}
-                                                    >
-                                                        <Pencil className="h-3 w-3" />
-                                                        Order #{order.order_number}
-                                                    </Button>
+                                                    <div key={order.id} className="flex items-center gap-1 bg-background border rounded-md pr-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 text-[10px] gap-1 px-2 border-r rounded-r-none hover:bg-muted"
+                                                            onClick={() => {
+                                                                setOrderToEdit(order)
+                                                                setIsEditorOpen(true)
+                                                            }}
+                                                        >
+                                                            <Pencil className="h-3 w-3" />
+                                                            Order #{order.order_number}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            onClick={(e) => handleDeleteOrder(e, order)}
+                                                            disabled={isDeletingOrder === order.id}
+                                                        >
+                                                            {isDeletingOrder === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                                                        </Button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         </CardHeader>
