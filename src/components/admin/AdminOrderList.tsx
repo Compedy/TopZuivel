@@ -55,6 +55,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     const [showCompleted, setShowCompleted] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [optimisticCompletion, setOptimisticCompletion] = useState<Record<string, boolean>>({})
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const filteredOrders = useMemo(() => {
         return initialOrders.filter(order => {
@@ -444,9 +445,9 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     const handleDeleteOrder = async (orderId: string) => {
         if (!confirm('Weet u zeker dat u deze bestelling permanent wilt verwijderen?')) return
 
-        setSaving(orderId) // Reuse saving state for loading
+        setIsDeleting(true)
         const result = await deleteOrder(orderId)
-        setSaving(null)
+        setIsDeleting(false)
 
         if (result.success) {
             router.refresh()
@@ -456,7 +457,18 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
+            {isDeleting && (
+                <div className="fixed inset-0 bg-background/60 backdrop-blur-[2px] z-[100] flex items-center justify-center">
+                    <div className="bg-card p-6 rounded-xl shadow-2xl border flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        <div className="text-center">
+                            <p className="font-bold text-lg">Bestelling Verwijderen</p>
+                            <p className="text-sm text-muted-foreground">Even geduld, de bestelling wordt permanent verwijderd...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
             <OrderSearch
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}

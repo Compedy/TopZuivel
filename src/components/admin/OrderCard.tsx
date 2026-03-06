@@ -75,6 +75,11 @@ export default function OrderCard({
                         </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">{order.email}</span>
+                    {order.notes && (
+                        <p className="text-[11px] text-muted-foreground italic line-clamp-1 max-w-[300px] md:max-w-md lg:max-w-xl">
+                            "{order.notes.length > 100 ? order.notes.substring(0, 100) + '...' : order.notes}"
+                        </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
@@ -106,16 +111,11 @@ export default function OrderCard({
                             )}
                         </Button>
                     </div>
-                    <div className="flex flex-col items-end gap-1 text-right">
+                    <div className="flex flex-col items-end gap-1 text-right shrink-0">
                         <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                             {formatDate(order.created_at)}
                             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </span>
-                        {order.notes && !isExpanded && (
-                            <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
-                                Heeft opmerking
-                            </Badge>
-                        )}
                     </div>
                 </div>
             </CardHeader>
@@ -202,7 +202,8 @@ export default function OrderCard({
                         </Button>
                     </div>
                 </CardContent>
-            )}
-        </Card>
+            )
+            }
+        </Card >
     )
 }
