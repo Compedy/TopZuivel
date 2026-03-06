@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Pencil, ChevronUp, ChevronDown, FileText, Loader2 } from 'lucide-react'
+import { Pencil, Trash2, ChevronUp, ChevronDown, FileText, Loader2 } from 'lucide-react'
 import { OrderWithItems } from '@/types'
 import OrderItemRow from './OrderItemRow'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ interface OrderCardProps {
     isExpanded: boolean
     onToggleExpand: () => void
     onEdit: () => void
+    onDelete: () => void
     onComplete: () => void
     formatDate: (date: string) => string
     formatPrice: (price: number) => string
@@ -35,6 +36,7 @@ export default function OrderCard({
     isExpanded,
     onToggleExpand,
     onEdit,
+    onDelete,
     onComplete,
     formatDate,
     formatPrice,
@@ -75,17 +77,35 @@ export default function OrderCard({
                     <span className="text-xs text-muted-foreground">{order.email}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onEdit()
-                        }}
-                    >
-                        <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onEdit()
+                            }}
+                        >
+                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onDelete()
+                            }}
+                            disabled={saving === order.id}
+                        >
+                            {saving === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Trash2 className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
                     <div className="flex flex-col items-end gap-1 text-right">
                         <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                             {formatDate(order.created_at)}

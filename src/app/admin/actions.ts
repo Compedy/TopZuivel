@@ -550,3 +550,22 @@ export async function updateStoreSettings(key: string, value: any) {
 
     return { success: true }
 }
+export async function deleteOrder(id: string) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+    const { error } = await adminSupabase
+        .from('orders')
+        .delete()
+        .eq('id', id)
+
+    if (error) {
+        console.error('Delete order error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}

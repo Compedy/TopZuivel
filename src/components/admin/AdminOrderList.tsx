@@ -15,7 +15,8 @@ import {
     updateOrderMetadata,
     addOrderItem,
     removeOrderItem,
-    toggleOrderItemCompletion
+    toggleOrderItemCompletion,
+    deleteOrder
 } from '@/app/admin/actions'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -440,6 +441,20 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
         }
     }
 
+    const handleDeleteOrder = async (orderId: string) => {
+        if (!confirm('Weet u zeker dat u deze bestelling permanent wilt verwijderen?')) return
+
+        setSaving(orderId) // Reuse saving state for loading
+        const result = await deleteOrder(orderId)
+        setSaving(null)
+
+        if (result.success) {
+            router.refresh()
+        } else {
+            alert('Fout bij verwijderen bestelling: ' + result.error)
+        }
+    }
+
     return (
         <div className="space-y-6">
             <OrderSearch
@@ -464,6 +479,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                             setEditingOrderId(order.id)
                             setIsEditorOpen(true)
                         }}
+                        onDelete={() => handleDeleteOrder(order.id)}
                         onComplete={() => completeOrder(order)}
                         formatDate={formatDate}
                         formatPrice={formatPrice}
