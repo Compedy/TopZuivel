@@ -52,17 +52,29 @@ export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceO
     }
 
     const copyToClipboard = (customer: CustomerMonthlyTotal) => {
+        let itemsText = ""
+        customer.orders.forEach(order => {
+            itemsText += `\nOrder #${order.order_number} (${new Date(order.created_at).toLocaleDateString('nl-NL')}):\n`
+            order.order_items?.forEach(item => {
+                const isPieceBased = ['st', 'stuk', 'blok'].includes(item.products?.unit_label?.toLowerCase() || '')
+                const stdWeight = item.products?.weight_per_unit || 0
+                const weight = item.actual_weight !== null ? item.actual_weight : (item.quantity * stdWeight)
+                const isPricePerKilo = item.products?.is_price_per_kilo
+                const linePrice = (isPieceBased && !isPricePerKilo) ? item.quantity * item.price_snapshot : weight * item.price_snapshot
+
+                let qtyStr = `${item.quantity} ${item.products?.unit_label}`
+                if (isPieceBased && (item.actual_weight !== null || (isPricePerKilo && stdWeight > 0))) {
+                    qtyStr += ` (${weight.toFixed(2)} kg)`
+                }
+
+                itemsText += `- ${qtyStr} ${item.products?.name} @ ${formatPrice(item.price_snapshot)} = ${formatPrice(linePrice)}\n`
+            })
+        })
+
         const text = `
 Factuurgegevens voor: ${customer.mostUsedCompanyName} (${customer.email})
 Maand: ${formatMonthName(customer.month)}
-
-Producten:
-${customer.items.map(item => {
-            const isPieceBased = ['st', 'stuk', 'blok'].includes(item.unitLabel.toLowerCase())
-            const weightInfo = (isPieceBased && item.hasWeightInfo) ? ` (${item.totalWeight.toFixed(2)} kg)` : ''
-            return `- ${item.quantity} ${item.unitLabel} ${item.name}${weightInfo} @ ${formatPrice(item.priceAtSnapshot)} = ${formatPrice(item.totalLinePrice)}`
-        }).join('\n')}
-
+${itemsText}
 Totaal: ${formatPrice(customer.grandTotal)}
         `.trim()
 
@@ -132,24 +144,56 @@ Totaal: ${formatPrice(customer.grandTotal)}
                                             </div>
                                         </CardHeader>
                                         <CardContent className="pt-4">
-                                            <div className="space-y-2">
-                                                {customer.items.map(item => {
-                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(item.unitLabel.toLowerCase())
+                                            <div className="space-y-6">
+                                                {customer.orders.map(order => {
+                                                    let orderTotal = 0
                                                     return (
-                                                        <div key={item.productId} className="flex justify-between text-sm">
-                                                            <span>
-                                                                <span className="font-medium">{item.quantity}×</span> {item.name}
-                                                                {isPieceBased && item.hasWeightInfo && (
-                                                                    <span className="text-xs text-muted-foreground ml-1">
-                                                                        ({item.totalWeight.toFixed(2)} kg)
-                                                                    </span>
-                                                                )}
-                                                            </span>
-                                                            <span className="text-muted-foreground">{formatPrice(item.totalLinePrice)}</span>
+                                                        <div key={order.id} className="space-y-2 border-b last:border-0 pb-4 last:pb-0">
+                                                            <div className="flex justify-between items-center bg-muted/20 p-2 rounded">
+                                                                <span className="text-xs font-bold text-muted-foreground uppercase">Order #{order.order_number}</span>
+                                                                <span className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString('nl-NL')}</span>
+                                                            </div>
+                                                            <div className="space-y-1.5 pl-2">
+                                                                {order.order_items?.map(item => {
+                                                                    const isPieceBased = ['st', 'stuk', 'blok'].includes(item.products?.unit_label?.toLowerCase() || '')
+                                                                    const isPricePerKilo = item.products?.is_price_per_kilo
+                                                                    const stdWeight = item.products?.weight_per_unit || 0
+
+                                                                    let linePrice = 0
+                                                                    let displayQty = ""
+
+                                                                    if (isPieceBased) {
+                                                                        const weight = item.actual_weight !== null ? item.actual_weight : (item.quantity * stdWeight)
+                                                                        linePrice = isPricePerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
+                                                                        displayQty = `${item.quantity} ${item.products?.unit_label}`
+                                                                        if (item.actual_weight !== null || (isPricePerKilo && stdWeight > 0)) {
+                                                                            displayQty += ` (${weight.toFixed(2)} kg)`
+                                                                        }
+                                                                    } else {
+                                                                        linePrice = item.quantity * item.price_snapshot
+                                                                        displayQty = `${item.quantity.toFixed(2)} ${item.products?.unit_label}`
+                                                                    }
+
+                                                                    orderTotal += linePrice
+
+                                                                    return (
+                                                                        <div key={item.id} className="flex justify-between text-xs items-baseline">
+                                                                            <span className="flex-1 mr-4">
+                                                                                <span className="font-medium">{displayQty}</span> {item.products?.name}
+                                                                                <span className="text-[10px] text-muted-foreground ml-1">@ {formatPrice(item.price_snapshot)}</span>
+                                                                            </span>
+                                                                            <span className="text-muted-foreground font-mono">{formatPrice(linePrice)}</span>
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                                <div className="flex justify-end pt-1">
+                                                                    <span className="text-[10px] font-bold">Subtotaal: {formatPrice(orderTotal)}</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     )
                                                 })}
-                                                <div className="border-t pt-2 mt-4 flex justify-between font-bold">
+                                                <div className="border-t pt-3 mt-2 flex justify-between font-bold text-base">
                                                     <span>Maand Totaal</span>
                                                     <span className="text-primary">{formatPrice(customer.grandTotal)}</span>
                                                 </div>

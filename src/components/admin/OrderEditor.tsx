@@ -35,9 +35,11 @@ export default function OrderEditor({
     const [email, setEmail] = useState(order.email || '')
     const [notes, setNotes] = useState(order.notes || '')
     const [weekNumber, setWeekNumber] = useState(order.week_number?.toString() || '')
+    const [orderDate, setOrderDate] = useState(order.created_at.split('T')[0])
     const [searchTerm, setSearchTerm] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [localQuantities, setLocalQuantities] = useState<Record<string, string>>({})
+    const [localPrices, setLocalPrices] = useState<Record<string, string>>({})
     const [localItems, setLocalItems] = useState<OrderWithItems['order_items']>([])
 
     // Sync metadata ONLY when the order ID itself changes
@@ -46,8 +48,9 @@ export default function OrderEditor({
         setCompanyName(order.company_name || '')
         setEmail(order.email || '')
         setNotes(order.notes || '')
-        setWeekNumber(order.order_number?.toString() || '')
-    }, [open, order.id])
+        setWeekNumber(order.week_number?.toString() || '')
+        setOrderDate(order.created_at.split('T')[0])
+    }, [open, order.id, order.created_at])
 
     // Sync local items and quantities on EVERY order update to stay fresh
     useEffect(() => {
@@ -59,6 +62,11 @@ export default function OrderEditor({
         setLocalQuantities(currentItems.reduce((acc, item) => ({
             ...acc,
             [item.id]: item.quantity.toString()
+        }), {}))
+
+        setLocalPrices(currentItems.reduce((acc, item) => ({
+            ...acc,
+            [item.id]: item.price_snapshot.toString()
         }), {}))
     }, [open, order.order_items])
 
@@ -77,7 +85,8 @@ export default function OrderEditor({
             company_name: companyName,
             email: email,
             notes: notes,
-            week_number: parseInt(weekNumber) || null
+            week_number: parseInt(weekNumber) || null,
+            created_at: new Date(orderDate).toISOString()
         })
         setIsSubmitting(false)
         if (result.success) {
@@ -173,6 +182,24 @@ export default function OrderEditor({
         }
     }
 
+    const handlePriceChange = async (itemId: string, displayVal: string) => {
+        setLocalPrices(prev => ({ ...prev, [itemId]: displayVal }))
+
+        const newPrice = parseFloat(displayVal.replace(',', '.'))
+        if (isNaN(newPrice) || newPrice < 0) return
+
+        setIsSubmitting(true)
+        const result = await updateOrderItemQuantity(itemId, undefined, undefined, newPrice)
+        setIsSubmitting(false)
+
+        if (result.success) {
+            onSuccess()
+        } else {
+            alert('Fout bij wijzigen prijs: ' + result.error)
+            // Revert will happen via prop sync
+        }
+    }
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-7xl w-full h-[90vh] flex flex-col p-0">
@@ -201,12 +228,12 @@ export default function OrderEditor({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="week">Week Nummer</Label>
+                            <Label htmlFor="date">Besteldatum</Label>
                             <Input
-                                id="week"
-                                type="number"
-                                value={weekNumber}
-                                onChange={(e) => setWeekNumber(e.target.value)}
+                                id="date"
+                                type="date"
+                                value={orderDate}
+                                onChange={(e) => setOrderDate(e.target.value)}
                             />
                         </div>
                     </div>
@@ -273,11 +300,19 @@ export default function OrderEditor({
                                 ) : (
                                     localItems.map((item) => (
                                         <div key={item.id} className="p-3 flex items-center justify-between bg-card">
-                                            <div className="flex-1">
-                                                <p className="font-medium text-sm">{item.products?.name}</p>
-                                                <p className="text-[10px] text-muted-foreground">
-                                                    €{item.price_snapshot.toFixed(2)} / {item.products?.unit_label}
-                                                </p>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate">{item.products?.name}</p>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">€</span>
+                                                    <Input
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        className="w-16 h-6 text-[10px] p-1 border-none bg-muted/50 focus-visible:ring-1"
+                                                        value={localPrices[item.id] ?? item.price_snapshot.toString()}
+                                                        onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                                                    />
+                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {item.products?.unit_label}</span>
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Input

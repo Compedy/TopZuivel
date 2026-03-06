@@ -305,13 +305,13 @@ export async function convertSingleRecurringOrderToReal(templateId: string) {
     return { success: true }
 }
 
-export async function updateOrderItemQuantity(itemId: string, newQuantity: number, newWeight?: number | null) {
+export async function updateOrderItemQuantity(itemId: string, newQuantity?: number, newWeight?: number | null, newPrice?: number) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
 
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    console.log(`[AdminAction] Updating order item ${itemId}: qty=${newQuantity}, weight=${newWeight}`)
+    console.log(`[AdminAction] Updating order item ${itemId}: qty=${newQuantity}, weight=${newWeight}, price=${newPrice}`)
 
     const adminSupabase = createAdminClient() as any
 
@@ -320,6 +320,7 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity: numbe
     if (newWeight !== undefined) {
         updates.actual_weight = newWeight === null ? null : Math.round(newWeight * 1000) / 1000
     }
+    if (newPrice !== undefined) updates.price_snapshot = newPrice
 
     const { error } = await adminSupabase
         .from('order_items')
@@ -376,7 +377,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
     return { success: true }
 }
 
-export async function updateOrderMetadata(orderId: string, updates: { company_name?: string | null, email?: string | null, notes?: string | null, week_number?: number | null }) {
+export async function updateOrderMetadata(orderId: string, updates: { company_name?: string | null, email?: string | null, notes?: string | null, week_number?: number | null, created_at?: string }) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }

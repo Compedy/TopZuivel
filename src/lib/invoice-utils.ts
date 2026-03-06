@@ -4,16 +4,6 @@ export interface CustomerMonthlyTotal {
     email: string
     mostUsedCompanyName: string
     month: string // YYYY-MM
-    items: {
-        productId: string
-        name: string
-        unitLabel: string
-        quantity: number
-        totalWeight: number
-        hasWeightInfo: boolean
-        priceAtSnapshot: number
-        totalLinePrice: number
-    }[]
     grandTotal: number
     orders: OrderWithItems[]
 }
@@ -48,62 +38,34 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
             const mostUsedCompanyName = Object.entries(customer.companyNames as Record<string, number>)
                 .reduce((a, b) => b[1] > a[1] ? b : a)[0]
 
-            const itemTotals: Record<string, { pieces: number, weight: number, price: number, hasActualWeight: boolean }> = {}
-
+            let grandTotal = 0
             customer.orders.forEach((order: OrderWithItems) => {
                 order.order_items?.forEach((item) => {
-                    const pid = item.product_id
-                    if (!pid) return
-                    if (!itemTotals[pid]) {
-                        itemTotals[pid] = { pieces: 0, weight: 0, price: item.price_snapshot, hasActualWeight: false }
-                    }
-
                     const isPieceBased = ['st', 'stuk', 'blok'].includes(item.products?.unit_label?.toLowerCase() || '')
+                    let linePrice = 0
+                    const price = item.price_snapshot
+
                     if (isPieceBased) {
-                        itemTotals[pid].pieces += Math.round(item.quantity)
                         const stdWeight = item.products?.weight_per_unit || 0
-                        if (item.actual_weight !== null) {
-                            itemTotals[pid].weight += item.actual_weight
-                            itemTotals[pid].hasActualWeight = true
+                        const isPricePerKilo = item.products?.is_price_per_kilo
+
+                        if (isPricePerKilo) {
+                            const weight = item.actual_weight !== null ? item.actual_weight : (item.quantity * stdWeight)
+                            linePrice = weight * price
                         } else {
-                            itemTotals[pid].weight += item.quantity * stdWeight
+                            linePrice = item.quantity * price
                         }
                     } else {
-                        itemTotals[pid].weight += item.quantity // quantity IS weight for kg items
+                        linePrice = item.quantity * price // quantity is weight for kg
                     }
+                    grandTotal += linePrice
                 })
             })
-
-            const items = products
-                .filter(p => itemTotals[p.id])
-                .map(p => {
-                    const total = itemTotals[p.id]
-                    const isPieceBased = ['st', 'stuk', 'blok'].includes(p.unit_label?.toLowerCase() || '')
-
-                    return {
-                        productId: p.id,
-                        name: p.name,
-                        unitLabel: p.unit_label,
-                        // For display: pieces for stuks, weight for kg
-                        quantity: isPieceBased ? total.pieces : total.weight,
-                        totalWeight: total.weight,
-                        hasWeightInfo: p.is_price_per_kilo || p.weight_per_unit > 0 || total.hasActualWeight || !isPieceBased,
-                        priceAtSnapshot: total.price,
-                        totalLinePrice: isPieceBased
-                            ? (p.is_price_per_kilo
-                                ? total.weight * total.price
-                                : (p.weight_per_unit > 0 ? total.weight * (total.price / p.weight_per_unit) : total.pieces * total.price))
-                            : (total.weight * total.price)
-                    }
-                })
-
-            const grandTotal = items.reduce((sum, item) => sum + item.totalLinePrice, 0)
 
             return {
                 email: customer.email,
                 mostUsedCompanyName,
                 month,
-                items,
                 grandTotal,
                 orders: customer.orders
             }
