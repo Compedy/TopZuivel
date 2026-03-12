@@ -8,6 +8,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { OrderSubmissionSchema } from '@/lib/schemas'
 import { env } from '@/lib/env'
+import { getCustomWeekData } from '@/lib/date-utils'
 
 export async function submitOrder(orderDetails: { companyName: string, email: string, cartItems: CartItem[], notes?: string }) {
     // 0. Validate input
@@ -24,17 +25,17 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
     const supabase = createAdminClient() as any
 
     // 1. Calculate Delivery Week (Week n+1)
-    const getWeek = (d: Date) => {
-        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
-    }
+    // We use the custom week data logic which is now NL-timezone aware.
+    // Sunday orders should belong to the delivery week starting the next day.
+    const now = new Date()
+    const currentWeekData = getCustomWeekData(now)
 
-    // Add 7 days to current date to get the delivery week
-    const deliveryDate = new Date()
-    deliveryDate.setDate(deliveryDate.getDate() + 7)
-    const deliveryWeek = getWeek(deliveryDate)
+    // The delivery week is always the "next" business week.
+    // If today is Sunday, currentWeekData.weekNumber is the week ending today.
+    // Adding 7 days safely gets us into the next week's range.
+    const deliveryDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const deliveryWeekData = getCustomWeekData(deliveryDate)
+    const deliveryWeek = deliveryWeekData.weekNumber
 
     const { data: order, error: orderError } = await (supabase
         .from('orders')

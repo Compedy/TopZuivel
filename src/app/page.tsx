@@ -1,4 +1,3 @@
-
 import { createClient } from '@/lib/supabase/server'
 import ShopInterface from '@/components/ShopInterface'
 import Link from 'next/link'
@@ -6,6 +5,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Info } from 'lucide-react'
 import type { Metadata } from 'next'
+import { sortProducts } from '@/lib/product-sorting'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://topzuivel.vercel.app'), // Replace with actual production URL if known
@@ -27,12 +27,13 @@ export default async function Home() {
     .from('products')
     .select('*')
     .eq('is_active', true)
-    .order('sort_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching products:', error)
     return <div>Er is een fout opgetreden bij het laden van de producten.</div>
   }
+
+  const sortedProducts = sortProducts(products || [])
 
   const { data: settingsData } = await supabase
     .from('store_settings')
@@ -69,7 +70,7 @@ export default async function Home() {
         </div>
       </header>
       <main className="container mx-auto p-6 max-w-5xl">
-        <ShopInterface products={products || []} openDays={openDays} />
+        <ShopInterface products={sortedProducts} openDays={openDays} />
       </main>
     </div>
   )

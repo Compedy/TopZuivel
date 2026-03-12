@@ -494,6 +494,24 @@ export async function deleteProduct(id: string) {
 
     const adminSupabase = createAdminClient() as any
 
+    // Check if product is in use in any orders
+    const { count, error: countError } = await adminSupabase
+        .from('order_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('product_id', id)
+
+    if (countError) {
+        console.error('Error checking product usage:', countError)
+        return { success: false, error: 'Fout bij controleren van productgebruik' }
+    }
+
+    if (count && count > 0) {
+        return {
+            success: false,
+            error: 'Dit product kan niet worden verwijderd omdat het in bestaande bestellingen staat. Maak het product in plaats daarvan inactief.'
+        }
+    }
+
     const { error } = await adminSupabase
         .from('products')
         .delete()

@@ -14,30 +14,32 @@ export interface WeekData {
 }
 
 export function getCustomWeekData(date: Date): WeekData {
-    // Shift the date 1 hour forward to handle the 23:00 boundary
-    const shiftedDate = new Date(date.getTime() + 60 * 60 * 1000);
+    // Top Zuivel wants Sunday orders to stay in the current business week.
+    // In NL (UTC+1/2), Sunday 23:30 is Monday 00:30 UTC.
+    // We should use the local NL time to determine the week.
 
-    // Calculate ISO week number of the shifted date
-    const weekNumber = getISOWeek(shiftedDate);
+    // Convert UTC date to NL time (Europe/Amsterdam)
+    const nlDateStr = date.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' });
+    const nlDate = new Date(nlDateStr);
 
-    // To find the start of this week:
-    // 1. Find the Monday of the ISO week for the shifted date.
-    // 2. Subtract 1 hour from that Monday 00:00 to get Sunday 23:00.
-    const temp = new Date(shiftedDate);
-    const day = temp.getUTCDay() || 7; // 1-7 (Mon-Sun)
-    temp.setUTCDate(temp.getUTCDate() - day + 1);
-    temp.setUTCHours(0, 0, 0, 0);
+    // Standard ISO week logic for the NL date
+    const weekNumber = getISOWeek(nlDate);
 
-    const weekStart = new Date(temp.getTime() - 60 * 60 * 1000);
-    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1000); // 7 days later minus 1 second
+    // Start of week (Monday 00:00 NL time)
+    const temp = new Date(nlDate);
+    const day = temp.getDay() || 7; // 1-7 (Mon-Sun)
+    temp.setDate(temp.getDate() - day + 1);
+    temp.setHours(0, 0, 0, 0);
+
+    const weekStart = new Date(temp);
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1000);
 
     return {
         weekNumber,
         weekStart,
         weekEnd,
         display: `Week ${weekNumber} (${formatDateShort(weekStart)} - ${formatDateShort(weekEnd)})`,
-        // Year is also important for grouping across years
-        year: shiftedDate.getUTCFullYear()
+        year: nlDate.getFullYear()
     };
 }
 

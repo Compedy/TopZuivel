@@ -4,9 +4,19 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Product, OrderWithItems, OrderItem } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { getCustomWeekData, groupOrdersByWeek } from '@/lib/date-utils'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { sortProducts } from '@/lib/product-sorting'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
+
+declare module 'jspdf' {
+    interface jsPDF {
+        autoTable: (options: any) => jsPDF
+    }
+}
 
 interface AdminWeekOverviewProps {
     products: Product[]
@@ -64,6 +74,108 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
         }))
     }
 
+    const exportToPDF = (group: { weekData: any, orders: OrderWithItems[] }) => {
+        const totals = calculateTotals(group.orders)
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a5'
+        })
+
+        // Header
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`Productie Overzicht - ${group.weekData.display}`, 10, 15)
+
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Totaal bestellingen: ${group.orders.length}`, 10, 22)
+
+        const regularCheese = totals.filter(t => t.category === 'Kaas' && !t.name.toLowerCase().includes('gevacumeerd'))
+        const prepackedCheese = totals.filter(t => t.category === 'Kaas' && t.name.toLowerCase().includes('gevacumeerd'))
+        const zuivel = totals.filter(t => t.category === 'Zuivel')
+
+        const allItems = [
+            ...regularCheese,
+            ...prepackedCheese,
+            ...zuivel
+        ]
+
+        // Split into two columns if many items
+        const useTwoColumns = allItems.length > 25
+        const body = allItems.map(p => {
+            const productionNeeded = Math.max(0, p.totalQuantity - (p.stock_quantity || 0))
+            return [
+                p.name,
+                `${p.totalQuantity} ${p.unit_label}`,
+                `${p.totalWeight.toFixed(1)} kg`,
+                `${productionNeeded} ${p.unit_label}`
+            ]
+        })
+
+        if (useTwoColumns) {
+            const midpoint = Math.ceil(body.length / 2)
+            const leftCol = body.slice(0, midpoint)
+            const rightCol = body.slice(midpoint)
+
+            // Left table
+            doc.autoTable({
+                startY: 30,
+                margin: { right: 74, left: 10 },
+                head: [['Product', 'Totaal', 'Kg', 'Prod']],
+                body: leftCol,
+                theme: 'grid',
+                styles: { fontSize: 7, cellPadding: 1 },
+                headStyles: { fillColor: [41, 128, 185] },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { cellWidth: 15, halign: 'right' },
+                    2: { cellWidth: 12, halign: 'right' },
+                    3: { cellWidth: 12, halign: 'right', fontStyle: 'bold' }
+                }
+            })
+
+            // Right table
+            doc.autoTable({
+                startY: 30,
+                margin: { left: 74, right: 10 },
+                head: [['Product', 'Totaal', 'Kg', 'Prod']],
+                body: rightCol,
+                theme: 'grid',
+                styles: { fontSize: 7, cellPadding: 1 },
+                headStyles: { fillColor: [41, 128, 185] },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { cellWidth: 15, halign: 'right' },
+                    2: { cellWidth: 12, halign: 'right' },
+                    3: { cellWidth: 12, halign: 'right', fontStyle: 'bold' }
+                }
+            })
+        } else {
+            doc.autoTable({
+                startY: 30,
+                head: [['Product', 'Totaal Besteld', 'Gewicht', 'Voorraad', 'Productie']],
+                body: allItems.map(p => [
+                    p.name,
+                    `${p.totalQuantity} ${p.unit_label}`,
+                    `${p.totalWeight.toFixed(2)} kg`,
+                    `${p.stock_quantity || 0} ${p.unit_label}`,
+                    `${Math.max(0, p.totalQuantity - (p.stock_quantity || 0))} ${p.unit_label}`
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [41, 128, 185] },
+                columnStyles: {
+                    1: { halign: 'right' },
+                    2: { halign: 'right' },
+                    3: { halign: 'right' },
+                    4: { halign: 'right', fontStyle: 'bold' }
+                }
+            })
+        }
+
+        doc.save(`TopZuivel_Overzicht_${group.weekData.year}_W${group.weekData.weekNumber}.pdf`)
+    }
+
     const calculateTotals = (weekOrders: OrderWithItems[]): SummedProduct[] => {
         const itemTotals: Record<string, { quantity: number, weight: number }> = {}
 
@@ -88,13 +200,15 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             })
         })
 
-        return products
-            .filter(p => itemTotals[p.id] && itemTotals[p.id].quantity > 0)
-            .map(p => ({
-                ...p,
-                totalQuantity: itemTotals[p.id].quantity,
-                totalWeight: itemTotals[p.id].weight
-            }))
+        return sortProducts(
+            products
+                .filter(p => itemTotals[p.id] && itemTotals[p.id].quantity > 0)
+                .map(p => ({
+                    ...p,
+                    totalQuantity: itemTotals[p.id].quantity,
+                    totalWeight: itemTotals[p.id].weight
+                }))
+        )
     }
 
     return (
@@ -127,8 +241,22 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                                     </span>
                                 </div>
                             </div>
-                            <div className="text-xs md:text-sm font-medium text-muted-foreground">
-                                {totals.length} {totals.length === 1 ? 'product' : 'producten'}
+                            <div className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-3">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-2 bg-background hover:bg-primary/5 border-primary/20"
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation()
+                                        exportToPDF(group)
+                                    }}
+                                >
+                                    <Printer className="h-3.5 w-3.5" />
+                                    <span>Print Overzicht</span>
+                                </Button>
+                                <div className="hidden sm:block">
+                                    {totals.length} {totals.length === 1 ? 'product' : 'producten'}
+                                </div>
                             </div>
                         </CardHeader>
                         {isExpanded && (
