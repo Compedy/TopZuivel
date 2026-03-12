@@ -10,13 +10,7 @@ import { ChevronDown, ChevronRight, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { sortProducts } from '@/lib/product-sorting'
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
-
-declare module 'jspdf' {
-    interface jsPDF {
-        autoTable: (options: any) => jsPDF
-    }
-}
+import autoTable from 'jspdf-autotable'
 
 interface AdminWeekOverviewProps {
     products: Product[]
@@ -119,7 +113,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             const rightCol = body.slice(midpoint)
 
             // Left table
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 30,
                 margin: { right: 74, left: 10 },
                 head: [['Product', 'Totaal', 'Kg', 'Prod']],
@@ -136,7 +130,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             })
 
             // Right table
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 30,
                 margin: { left: 74, right: 10 },
                 head: [['Product', 'Totaal', 'Kg', 'Prod']],
@@ -152,7 +146,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
                 }
             })
         } else {
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 30,
                 head: [['Product', 'Totaal Besteld', 'Gewicht', 'Voorraad', 'Productie']],
                 body: allItems.map(p => [
