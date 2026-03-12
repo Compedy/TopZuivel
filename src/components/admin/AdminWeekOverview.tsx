@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { getCustomWeekData, groupOrdersByWeek } from '@/lib/date-utils'
 import { ChevronDown, ChevronRight, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { sortProducts } from '@/lib/product-sorting'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -194,15 +193,13 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             })
         })
 
-        return sortProducts(
-            products
-                .filter(p => itemTotals[p.id] && itemTotals[p.id].quantity > 0)
-                .map(p => ({
-                    ...p,
-                    totalQuantity: itemTotals[p.id].quantity,
-                    totalWeight: itemTotals[p.id].weight
-                }))
-        )
+        return products
+            .filter(p => itemTotals[p.id] && itemTotals[p.id].quantity > 0)
+            .map(p => ({
+                ...p,
+                totalQuantity: itemTotals[p.id].quantity,
+                totalWeight: itemTotals[p.id].weight
+            }))
     }
 
     return (

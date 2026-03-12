@@ -618,3 +618,31 @@ export async function deleteInvoice(email: string, monthKey: string) {
     revalidatePath('/admin')
     return { success: true }
 }
+
+export async function updateProductSortOrder(updates: { id: string, sort_order: number }[]) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    const adminSupabase = createAdminClient() as any
+
+    // Run updates in parallel
+    const results = await Promise.all(updates.map(async (update) => {
+        const { error } = await adminSupabase
+            .from('products')
+            .update({ sort_order: update.sort_order })
+            .eq('id', update.id)
+        return { id: update.id, success: !error }
+    }))
+
+    const failed = results.filter(r => !r.success)
+    if (failed.length > 0) {
+        setImmediate(() => console.error('Failed to update sort orders for:', failed))
+        return { success: false, error: 'Sommige producten konden niet worden herordend' }
+    }
+
+    revalidatePath('/admin')
+    revalidatePath('/shop')
+    revalidatePath('/')
+    return { success: true }
+}

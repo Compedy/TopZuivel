@@ -5,7 +5,6 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Info } from 'lucide-react'
 import type { Metadata } from 'next'
-import { sortProducts } from '@/lib/product-sorting'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://topzuivel.vercel.app'), // Replace with actual production URL if known
@@ -27,6 +26,7 @@ export default async function Home() {
     .from('products')
     .select('*')
     .eq('is_active', true)
+    .order('sort_order', { ascending: true })
 
   if (error) {
     console.error('Error fetching products:', error)
@@ -70,7 +70,7 @@ export default async function Home() {
         </div>
       </header>
       <main className="container mx-auto p-6 max-w-5xl">
-        <ShopInterface products={sortedProducts} openDays={openDays} />
+        <ShopInterface products={products || []} openDays={openDays} />
       </main>
     </div>
   )

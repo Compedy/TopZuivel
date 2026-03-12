@@ -1,16 +1,34 @@
 
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Product } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { updateProduct, deleteProduct } from '@/app/admin/actions'
+import { updateProduct, deleteProduct, updateProductSortOrder } from '@/app/admin/actions'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Plus, Edit2, Save, X, Trash2, FileText } from 'lucide-react'
+import { Loader2, Plus, Edit2, Save, X, Trash2, FileText, GripVertical } from 'lucide-react'
 import AddProductForm from './AddProductForm'
 import { useRouter } from 'next/navigation'
+
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core'
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface AdminProductListProps {
     initialProducts: Product[]
@@ -19,12 +37,50 @@ interface AdminProductListProps {
 export default function AdminProductList({ initialProducts }: AdminProductListProps) {
     const router = useRouter()
     const [isAdding, setIsAdding] = useState(false)
+    const [products, setProducts] = useState(initialProducts)
+
+    useEffect(() => {
+        setProducts(initialProducts)
+    }, [initialProducts])
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    )
 
     // Extract unique categories for the editors
     const categories = useMemo(() => {
         const unique = Array.from(new Set(initialProducts.map(p => p.category)))
         return unique.sort()
     }, [initialProducts])
+
+    async function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event
+
+        if (over && active.id !== over.id) {
+            const oldIndex = products.findIndex((p) => p.id === active.id)
+            const newIndex = products.findIndex((p) => p.id === over.id)
+
+            const newProducts = arrayMove(products, oldIndex, newIndex)
+            setProducts(newProducts)
+
+            // Calculate new sort orders
+            const updates = newProducts.map((p, index) => ({
+                id: p.id,
+                sort_order: index + 1
+            }))
+
+            const result = await updateProductSortOrder(updates)
+            if (!result.success) {
+                alert('Fout bij herordenen: ' + result.error)
+                setProducts(initialProducts) // Revert on failure
+            } else {
+                router.refresh()
+            }
+        }
+    }
 
     return (
         <div className="space-y-4">
@@ -52,23 +108,60 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
 
             <div className="rounded-md border bg-card overflow-hidden">
                 <div className="hidden md:grid grid-cols-12 gap-4 p-4 font-medium text-sm text-muted-foreground border-b bg-muted/40">
-                    <div className="col-span-4">Naam / Categorie</div>
+                    <div className="col-span-1"></div>
+                    <div className="col-span-3">Naam / Categorie</div>
                     <div className="col-span-2 text-right">Prijs</div>
                     <div className="col-span-2 text-center">Type</div>
                     <div className="col-span-2 text-center">Actief</div>
                     <div className="col-span-2 text-right">Acties</div>
                 </div>
                 <div className="divide-y relative">
-                    {initialProducts.map((product: Product) => (
-                        <ProductRow key={product.id} product={product} categories={categories} />
-                    ))}
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={products.map(p => p.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            {products.map((product: Product) => (
+                                <SortableProductRow key={product.id} product={product} categories={categories} />
+                            ))}
+                        </SortableContext>
+                    </DndContext>
                 </div>
             </div>
         </div>
     )
 }
 
-function ProductRow({ product, categories }: { product: Product, categories: string[] }) {
+function SortableProductRow({ product, categories }: { product: Product, categories: string[] }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: product.id })
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 0,
+        position: 'relative' as const,
+        opacity: isDragging ? 0.5 : 1
+    }
+
+    return (
+        <div ref={setNodeRef} style={style} className="bg-card">
+            <ProductRow product={product} categories={categories} dragHandleProps={{ ...attributes, ...listeners }} />
+        </div>
+    )
+}
+
+function ProductRow({ product, categories, dragHandleProps }: { product: Product, categories: string[], dragHandleProps?: any }) {
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -86,7 +179,7 @@ function ProductRow({ product, categories }: { product: Product, categories: str
         const result = await updateProduct(product.id, data)
         if (result.success) {
             setIsEditing(false)
-            router.refresh() // Added router.refresh()
+            router.refresh()
         } else {
             alert('Fout bij opslaan: ' + result.error)
         }
@@ -109,7 +202,10 @@ function ProductRow({ product, categories }: { product: Product, categories: str
     if (isEditing) {
         return (
             <div className="p-3 bg-accent/10 border-l-4 border-primary animate-in fade-in space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 md:items-center">
-                <div className="md:col-span-4 flex flex-col gap-2">
+                <div className="md:col-span-1 hidden md:flex justify-center">
+                    <GripVertical className="h-5 w-5 text-muted-foreground/30 cursor-not-allowed" />
+                </div>
+                <div className="md:col-span-3 flex flex-col gap-2">
                     <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-muted-foreground">Product Naam</label>
                         <Input
@@ -213,7 +309,10 @@ function ProductRow({ product, categories }: { product: Product, categories: str
     return (
         <div className="hover:bg-muted/30 transition-colors text-sm">
             <div className="flex items-center justify-between p-3 md:grid md:grid-cols-12 md:gap-4">
-                <div className="md:col-span-4 flex flex-col truncate mr-2">
+                <div className="md:col-span-1 flex items-center justify-center p-2 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-primary transition-colors" {...dragHandleProps}>
+                    <GripVertical className="h-4 w-4" />
+                </div>
+                <div className="md:col-span-3 flex flex-col truncate mr-2">
                     <span className="font-bold md:font-medium text-sm truncate">{product.name}</span>
                     <span className="text-[10px] text-muted-foreground">{product.category}</span>
                 </div>
