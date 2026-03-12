@@ -94,77 +94,39 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
             ...zuivel
         ]
 
-        // Split into two columns if many items
-        const useTwoColumns = allItems.length > 25
-        const body = allItems.map(p => {
-            const productionNeeded = Math.max(0, p.totalQuantity - (p.stock_quantity || 0))
-            return [
-                p.name,
-                `${p.totalQuantity} ${p.unit_label}`,
-                `${p.totalWeight.toFixed(1)} kg`,
-                `${productionNeeded} ${p.unit_label}`
-            ]
-        })
-
-        if (useTwoColumns) {
-            const midpoint = Math.ceil(body.length / 2)
-            const leftCol = body.slice(0, midpoint)
-            const rightCol = body.slice(midpoint)
-
-            // Left table
-            autoTable(doc, {
-                startY: 30,
-                margin: { right: 74, left: 10 },
-                head: [['Product', 'Totaal', 'Kg', 'Prod']],
-                body: leftCol,
-                theme: 'grid',
-                styles: { fontSize: 7, cellPadding: 1 },
-                headStyles: { fillColor: [41, 128, 185] },
-                columnStyles: {
-                    0: { cellWidth: 'auto' },
-                    1: { cellWidth: 15, halign: 'right' },
-                    2: { cellWidth: 12, halign: 'right' },
-                    3: { cellWidth: 12, halign: 'right', fontStyle: 'bold' }
-                }
-            })
-
-            // Right table
-            autoTable(doc, {
-                startY: 30,
-                margin: { left: 74, right: 10 },
-                head: [['Product', 'Totaal', 'Kg', 'Prod']],
-                body: rightCol,
-                theme: 'grid',
-                styles: { fontSize: 7, cellPadding: 1 },
-                headStyles: { fillColor: [41, 128, 185] },
-                columnStyles: {
-                    0: { cellWidth: 'auto' },
-                    1: { cellWidth: 15, halign: 'right' },
-                    2: { cellWidth: 12, halign: 'right' },
-                    3: { cellWidth: 12, halign: 'right', fontStyle: 'bold' }
-                }
-            })
-        } else {
-            autoTable(doc, {
-                startY: 30,
-                head: [['Product', 'Totaal Besteld', 'Gewicht', 'Voorraad', 'Productie']],
-                body: allItems.map(p => [
+        autoTable(doc, {
+            startY: 30,
+            head: [['Product', 'Totaal Besteld', 'Gewicht', 'Voorraad', 'Productie']],
+            body: allItems.map(p => {
+                const productionNeeded = Math.max(0, p.totalQuantity - (p.stock_quantity || 0))
+                return [
                     p.name,
                     `${p.totalQuantity} ${p.unit_label}`,
                     `${p.totalWeight.toFixed(2)} kg`,
                     `${p.stock_quantity || 0} ${p.unit_label}`,
-                    `${Math.max(0, p.totalQuantity - (p.stock_quantity || 0))} ${p.unit_label}`
-                ]),
-                theme: 'striped',
-                headStyles: { fillColor: [41, 128, 185] },
-                columnStyles: {
-                    1: { halign: 'right' },
-                    2: { halign: 'right' },
-                    3: { halign: 'right' },
-                    4: { halign: 'right', fontStyle: 'bold' }
-                }
-            })
-        }
+                    `${productionNeeded} ${p.unit_label}`
+                ]
+            }),
+            theme: 'striped',
+            styles: { fontSize: 9, cellPadding: 2 },
+            headStyles: { fillColor: [41, 128, 185], fontSize: 10 },
+            columnStyles: {
+                0: { cellWidth: 'auto' },
+                1: { cellWidth: 25, halign: 'right' },
+                2: { cellWidth: 22, halign: 'right' },
+                3: { cellWidth: 22, halign: 'right' },
+                4: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
+            },
+            // Add page numbers
+            didDrawPage: (data) => {
+                doc.setFontSize(8)
+                doc.text(
+                    `Pagina ${data.pageNumber}`,
+                    doc.internal.pageSize.width - 20,
+                    doc.internal.pageSize.height - 10
+                )
+            }
+        })
 
         doc.save(`TopZuivel_Overzicht_${group.weekData.year}_W${group.weekData.weekNumber}.pdf`)
     }
