@@ -23,6 +23,7 @@ export interface Database {
                     is_active: boolean
                     sort_order: number | null
                     stock_quantity: number
+                    is_deleted: boolean
                 }
                 Insert: {
                     id?: string
@@ -203,6 +204,7 @@ export type OrderWithItems = Order & {
             weight_per_unit: number
             stock_quantity: number
             sort_order: number | null
+            is_deleted: boolean
         } | null
     })[]
 }

@@ -23,6 +23,7 @@ export default async function AdminPage() {
     const { data: products } = await supabase
         .from('products')
         .select('*')
+        .eq('is_deleted', false)
         .order('sort_order', { ascending: true }) // Using new sort order
 
     // 2. Fetch Orders

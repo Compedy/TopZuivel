@@ -15,7 +15,8 @@ CREATE TABLE products (
     weight_per_unit DECIMAL(10,3),           -- Used for total weight calculation
     is_active BOOLEAN DEFAULT true,
     sort_order INTEGER DEFAULT 999,
-    stock_quantity DECIMAL(10,2) DEFAULT 0
+    stock_quantity DECIMAL(10,2) DEFAULT 0,
+    is_deleted BOOLEAN DEFAULT false
 );
 
 -- Indexes for performance
@@ -54,8 +55,8 @@ ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 
 -- POLICIES (Basic Setup)
 
--- Products: Everyone can read active products.
-CREATE POLICY "Public read active products" ON products FOR SELECT USING (is_active = true);
+-- Products: Everyone can read active and non-deleted products.
+CREATE POLICY "Public read active products" ON products FOR SELECT USING (is_active = true AND is_deleted = false);
 
 -- Orders & Items: RLS is enabled, but policies are omitted as admin uses Service Role.
 -- This ensures only the Service Role (Backoffice) can access these tables.
