@@ -33,8 +33,6 @@ export default async function Home() {
     return <div>Er is een fout opgetreden bij het laden van de producten.</div>
   }
 
-  const sortedProducts = sortProducts(products || [])
-
   const { data: settingsData } = await supabase
     .from('store_settings')
     .select('value')
