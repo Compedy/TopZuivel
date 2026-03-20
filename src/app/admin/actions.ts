@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { Database, RecurringOrder, RecurringOrderItem } from '@/types'
+import { Database, Json, RecurringOrder, RecurringOrderItem } from '@/types'
 import { cookies } from 'next/headers'
 import { getCustomWeekData } from '@/lib/date-utils'
 
@@ -14,8 +14,7 @@ export async function updateProduct(id: string, updates: ProductUpdate) {
 
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const adminSupabase = createAdminClient() as any
+const adminSupabase = createAdminClient()
 
     const { error } = await adminSupabase
         .from('products')
@@ -40,8 +39,7 @@ export async function addProduct(product: ProductInsert) {
 
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const adminSupabase = createAdminClient() as any
+const adminSupabase = createAdminClient()
 
     const { data, error } = await adminSupabase
         .from('products')
@@ -68,7 +66,7 @@ export async function addProduct(product: ProductInsert) {
 // RECURRING ORDERS ACTIONS
 
 export async function getRecurringOrders() {
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     const { data, error } = await adminSupabase
         .from('recurring_orders')
         .select('*, recurring_order_items(*)')
@@ -89,7 +87,7 @@ export async function upsertRecurringOrder(
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
     let orderId = order.id
 
@@ -148,7 +146,7 @@ export async function deleteRecurringOrder(id: string) {
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     const { error } = await adminSupabase.from('recurring_orders').delete().eq('id', id)
 
     if (error) return { success: false, error: error.message }
@@ -159,7 +157,7 @@ export async function deleteRecurringOrder(id: string) {
 
 export async function convertRecurringOrdersToReal() {
     // This action would be called by a cron job or manually for testing
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
     // 1. Fetch all active recurring orders
     const { data: templates, error: fetchError } = await adminSupabase
@@ -173,9 +171,9 @@ export async function convertRecurringOrdersToReal() {
 
     // 2. Fetch current product prices
     const { data: products } = await adminSupabase.from('products').select('id, price')
-    const priceMap = new Map((products as any[])?.map((p: any) => [p.id, p.price]))
+    const priceMap = new Map(products?.map(p => [p.id, p.price]) ?? [])
 
-    const results = []
+    const results: { email: string; success: boolean; error?: string }[] = []
     const weekData = getCustomWeekData(new Date())
 
     for (const template of templates) {
@@ -211,7 +209,7 @@ export async function convertRecurringOrdersToReal() {
         }
 
         // Create Items with price modifiers
-        const itemsToInsert = template.recurring_order_items.map((item: any) => {
+        const itemsToInsert = template.recurring_order_items.map((item: RecurringOrderItem) => {
             const basePrice = (priceMap.get(item.product_id) as number) || 0
             const modifier = Number(template.price_modifier) || 0
             // Apply percentage modifier: basePrice * (1 + modifier / 100)
@@ -243,7 +241,7 @@ export async function convertSingleRecurringOrderToReal(templateId: string) {
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
     // 1. Fetch the specific recurring order template
     const { data: template, error: fetchError } = await adminSupabase
@@ -258,7 +256,7 @@ export async function convertSingleRecurringOrderToReal(templateId: string) {
 
     // 2. Fetch current product prices
     const { data: products } = await adminSupabase.from('products').select('id, price')
-    const priceMap = new Map((products as any[])?.map((p: any) => [p.id, p.price]))
+    const priceMap = new Map(products?.map(p => [p.id, p.price]) ?? [])
 
     const weekData = getCustomWeekData(new Date())
 
@@ -279,7 +277,7 @@ export async function convertSingleRecurringOrderToReal(templateId: string) {
     }
 
     // 4. Create Items with price modifiers
-    const itemsToInsert = template.recurring_order_items.map((item: any) => {
+    const itemsToInsert = template.recurring_order_items.map((item: RecurringOrderItem) => {
         const basePrice = (priceMap.get(item.product_id) as number) || 0
         const modifier = Number(template.price_modifier) || 0
         // Apply percentage modifier: basePrice * (1 + modifier / 100)
@@ -313,9 +311,9 @@ export async function updateOrderItemQuantity(itemId: string, newQuantity?: numb
 
     console.log(`[AdminAction] Updating order item ${itemId}: qty=${newQuantity}, weight=${newWeight}, price=${newPrice}`)
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
-    const updates: any = {}
+    const updates: Database['public']['Tables']['order_items']['Update'] = {}
     if (newQuantity !== undefined) updates.quantity = Math.round(newQuantity * 1000) / 1000
     if (newWeight !== undefined) {
         updates.actual_weight = newWeight === null ? null : Math.round(newWeight * 1000) / 1000
@@ -340,7 +338,7 @@ export async function toggleOrderItemCompletion(itemId: string, isCompleted: boo
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
         .from('order_items')
         .update({ is_completed: isCompleted })
@@ -361,7 +359,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
     const { error } = await adminSupabase
         .from('orders')
@@ -382,7 +380,7 @@ export async function updateOrderMetadata(orderId: string, updates: { company_na
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
         .from('orders')
         .update(updates)
@@ -402,7 +400,7 @@ export async function addOrderItem(orderId: string, productId: string, quantity:
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
         .from('order_items')
         .insert({
@@ -426,7 +424,7 @@ export async function removeOrderItem(itemId: string) {
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
         .from('order_items')
         .delete()
@@ -447,7 +445,7 @@ export async function updateStockLevels(updates: { id: string, stock_quantity: n
 
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
     // For simplicity and safety, we'll do individual updates in a promise all
     const results = await Promise.all(updates.map(async (update) => {
@@ -471,7 +469,7 @@ export async function updateStockLevels(updates: { id: string, stock_quantity: n
 }
 
 export async function wakeUpDatabase() {
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     // Simple query to wake up the DB
     const { data, error } = await adminSupabase
         .from('products')
@@ -492,7 +490,7 @@ export async function deleteProduct(id: string) {
 
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
     const { error } = await adminSupabase
         .from('products')
@@ -512,8 +510,7 @@ export async function deleteProduct(id: string) {
 // STORE SETTINGS ACTIONS
 
 export async function getStoreSettings(key: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const adminSupabase = createAdminClient() as any
+const adminSupabase = createAdminClient()
     const { data, error } = await adminSupabase
         .from('store_settings')
         .select('value')
@@ -528,14 +525,12 @@ export async function getStoreSettings(key: string) {
     return { success: true, data: data.value }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateStoreSettings(key: string, value: any) {
+export async function updateStoreSettings(key: string, value: Json) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const adminSupabase = createAdminClient() as any
+const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
         .from('store_settings')
         .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
@@ -556,7 +551,7 @@ export async function deleteOrder(id: string) {
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
     const { error } = await adminSupabase
         .from('orders')
         .delete()
@@ -576,7 +571,7 @@ export async function deleteInvoice(email: string, monthKey: string) {
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
 
-    const adminSupabase = createAdminClient() as any
+    const adminSupabase = createAdminClient()
 
     // Parse monthKey (YYYY-MM)
     const [year, month] = monthKey.split('-').map(Number)

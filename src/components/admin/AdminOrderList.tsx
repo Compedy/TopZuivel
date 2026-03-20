@@ -24,6 +24,7 @@ import OrderSearch from './OrderSearch'
 import OrderCard from './OrderCard'
 import OrderEditor from './OrderEditor'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 interface AdminOrderListProps {
     initialOrders: OrderWithItems[]
@@ -110,7 +111,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                 delete newState[itemId]
                 return newState
             })
-            alert('Fout bei bijwerken status: ' + result.error)
+            toast.error('Fout bij bijwerken status: ' + result.error)
         } else {
             router.refresh()
             // We keep the optimistic status until the refresh is complete
@@ -119,7 +120,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
         }
     }
 
-    const initEditing = (item: any) => {
+    const initEditing = (item: OrderWithItems['order_items'][number]) => {
         if (editingItems[item.id]) return
 
         const standardWeight = item.products?.weight_per_unit || 1
@@ -249,7 +250,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                 return newState
             })
         } else {
-            alert('Fout bij herstellen: ' + result.error)
+            toast.error('Fout bij herstellen: ' + result.error)
         }
         setSaving(null)
     }
@@ -287,7 +288,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                 return newState
             })
         } else {
-            alert('Fout bij opslaan: ' + result.error)
+            toast.error('Fout bij opslaan: ' + result.error)
         }
         setSaving(null)
     }
@@ -382,7 +383,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             // Totals
             const totalLines = order.order_items.length
 
-            const lastY = (doc as any).lastAutoTable.finalY + 10
+            const lastY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10
             doc.setFont('helvetica', 'bold')
             doc.text(`Totaal aantal regels: ${totalLines}`, 15, lastY)
 
@@ -394,7 +395,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             doc.save(`TopZuivel_Order_${order.company_name}_${today}.pdf`)
         } catch (err) {
             console.error('General PDF error:', err)
-            alert('Fout bij het genereren van de PDF. Controleer de console voor details.')
+            toast.error('Fout bij het genereren van de PDF.')
         }
     }
 
@@ -432,10 +433,10 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                 setExpandedOrder(null)
                 router.refresh()
             } else {
-                alert('Fout bij afronden bestelling: ' + result.error)
+                toast.error('Fout bij afronden bestelling: ' + result.error)
             }
         } catch (error) {
-            alert('Systeemfout bij afronden bestelling.')
+            toast.error('Systeemfout bij afronden bestelling.')
             console.error(error)
         } finally {
             setCompleting(null)
@@ -452,7 +453,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
         if (result.success) {
             router.refresh()
         } else {
-            alert('Fout bij verwijderen bestelling: ' + result.error)
+            toast.error('Fout bij verwijderen bestelling: ' + result.error)
         }
     }
 

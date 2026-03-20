@@ -99,7 +99,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
 
     return (
         <div className="space-y-4">
-            {weekGroups.map((group: { weekData: any, orders: OrderWithItems[] }, index: number) => {
+            {weekGroups.map((group, index) => {
                 const key = `${group.weekData.year}-W${group.weekData.weekNumber}`
                 const isExpanded = !!expandedWeeks[key]
                 const totals = calculateTotals(group.orders)

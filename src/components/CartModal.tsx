@@ -18,12 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { ShoppingCart } from 'lucide-react'
 import { submitOrder } from '@/app/actions'
-
-
-// Simple toast mock if not exists, but we installed shadcn. 
-// Actually shadcn adds use-toast.ts if you add the toast component. 
-// I haven't added toast component yet via CLI. I'll just use simple alert/state for now or add it later.
-// I'll stick to a simple success state in the modal for now to avoid dependency hell in this step.
+import { toast } from 'sonner'
 
 interface CartModalProps {
     cartItems: CartItem[]
@@ -50,7 +45,7 @@ export default function CartModal({ cartItems, onSubmitSuccess, disabled = false
 
     const handleSubmit = async () => {
         if (!companyName || !email) {
-            alert('Vul alstublieft uw bedrijfsnaam en e-mailadres in.')
+            toast.warning('Vul alstublieft uw bedrijfsnaam en e-mailadres in.')
             return
         }
 
@@ -70,11 +65,11 @@ export default function CartModal({ cartItems, onSubmitSuccess, disabled = false
                 setNotes('')
                 // Keep modal open for a moment to show success message
             } else {
-                alert('Er ging iets mis: ' + result.error)
+                toast.error('Er ging iets mis: ' + result.error)
             }
         } catch (e) {
             console.error(e)
-            alert('Er is een onverwachte fout opgetreden.')
+            toast.error('Er is een onverwachte fout opgetreden.')
         } finally {
             setIsSubmitting(false)
         }

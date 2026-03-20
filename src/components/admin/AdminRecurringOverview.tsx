@@ -15,6 +15,7 @@ import {
 } from '@/app/admin/actions'
 import { Plus, Edit2, Trash2, Play, AlertCircle, CheckCircle2 } from 'lucide-react'
 import RecurringOrderEditor from './RecurringOrderEditor'
+import { toast } from 'sonner'
 import {
     Alert,
     AlertDescription,
@@ -51,7 +52,7 @@ export default function AdminRecurringOverview({ products }: AdminRecurringOverv
         if (confirm('Weet u zeker dat u deze periodieke bestelling wilt verwijderen?')) {
             const res = await deleteRecurringOrder(id)
             if (res.success) fetchOrders()
-            else alert('Fout: ' + res.error)
+            else toast.error('Fout: ' + res.error)
         }
     }
 

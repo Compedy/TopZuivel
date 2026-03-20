@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Plus, Edit2, Save, X, Trash2, FileText } from 'lucide-react'
 import AddProductForm from './AddProductForm'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 interface AdminProductListProps {
     initialProducts: Product[]
@@ -88,7 +89,7 @@ function ProductRow({ product, categories }: { product: Product, categories: str
             setIsEditing(false)
             router.refresh() // Added router.refresh()
         } else {
-            alert('Fout bij opslaan: ' + result.error)
+            toast.error('Fout bij opslaan: ' + result.error)
         }
         setLoading(false)
     }
@@ -99,7 +100,7 @@ function ProductRow({ product, categories }: { product: Product, categories: str
         setLoading(true)
         const result = await deleteProduct(product.id)
         if (!result.success) {
-            alert('Fout bij verwijderen: ' + result.error)
+            toast.error('Fout bij verwijderen: ' + result.error)
         } else {
             router.refresh()
         }

@@ -8,6 +8,16 @@ import { OrderWithItems } from '@/types'
 import OrderItemRow from './OrderItemRow'
 import { cn } from '@/lib/utils'
 
+type OrderItemWithProduct = OrderWithItems['order_items'][number]
+
+interface EditData {
+    totalWeight: number
+    displayTotalWeight: string
+    units: number[]
+    displayUnits: string[]
+    isExpanded: boolean
+}
+
 interface OrderCardProps {
     order: OrderWithItems
     isExpanded: boolean
@@ -17,17 +27,17 @@ interface OrderCardProps {
     onComplete: () => void
     formatDate: (date: string) => string
     formatPrice: (price: number) => string
-    editingItems: Record<string, any>
+    editingItems: Record<string, EditData>
     optimisticCompletion: Record<string, boolean>
     saving: string | null
     completing: string | null
     handlers: {
         handleToggleCompletion: (itemId: string, currentStatus: boolean) => void
         handleWeightChange: (itemId: string, val: string) => void
-        handleSaveWeight: (item: any, standardWeight: number) => void
+        handleSaveWeight: (item: OrderItemWithProduct, standardWeight: number) => void
         handleResetWeight: (itemId: string, unitLabel?: string) => void
         handleCancelEdit: (itemId: string) => void
-        handleInitEditing: (item: any) => void
+        handleInitEditing: (item: OrderItemWithProduct) => void
     }
 }
 

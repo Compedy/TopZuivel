@@ -8,8 +8,14 @@ export interface CustomerMonthlyTotal {
     orders: OrderWithItems[]
 }
 
+interface CustomerAccumulator {
+    email: string
+    companyNames: Record<string, number>
+    orders: OrderWithItems[]
+}
+
 export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products: Product[]): Record<string, CustomerMonthlyTotal[]> {
-    const months: Record<string, Record<string, any>> = {}
+    const months: Record<string, Record<string, CustomerAccumulator>> = {}
 
     orders.forEach(order => {
         const date = new Date(order.created_at)
@@ -35,7 +41,7 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
     Object.entries(months).forEach(([month, customers]) => {
         result[month] = Object.values(customers).map(customer => {
             // Find most used company name
-            const mostUsedCompanyName = Object.entries(customer.companyNames as Record<string, number>)
+            const mostUsedCompanyName = Object.entries(customer.companyNames)
                 .reduce((a, b) => b[1] > a[1] ? b : a)[0]
 
             let grandTotal = 0

@@ -12,10 +12,27 @@ const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
-const _env = envSchema.safeParse(process.env);
+export type Env = z.infer<typeof envSchema>;
 
-if (!_env.success) {
-    console.warn('⚠️ Sommige omgevingsvariabelen ontbreken of zijn ongeldig:', _env.error.format());
+let _cachedEnv: Env | null = null;
+
+function validateEnv(): Env {
+    if (_cachedEnv) return _cachedEnv;
+
+    const result = envSchema.safeParse(process.env);
+    if (!result.success) {
+        throw new Error(
+            `Ongeldige omgevingsvariabelen:\n${JSON.stringify(result.error.format(), null, 2)}`
+        );
+    }
+
+    _cachedEnv = result.data;
+    return _cachedEnv;
 }
 
-export const env = (_env.success ? _env.data : process.env) as any;
+export const env = new Proxy({} as Env, {
+    get(_, prop: string) {
+        const validated = validateEnv();
+        return validated[prop as keyof Env];
+    }
+});

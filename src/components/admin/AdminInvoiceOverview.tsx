@@ -12,10 +12,11 @@ import OrderEditor from './OrderEditor'
 import { useRouter } from 'next/navigation'
 import { deleteInvoice, deleteOrder } from '@/app/admin/actions'
 import { OrderWithItems } from '@/types'
+import { toast } from 'sonner'
 
 interface AdminInvoiceOverviewProps {
     products: Product[]
-    orders: any[]
+    orders: OrderWithItems[]
 }
 
 export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceOverviewProps) {
@@ -100,7 +101,7 @@ Totaal: ${formatPrice(customer.grandTotal)}
         if (result.success) {
             router.refresh()
         } else {
-            alert('Fout bij verwijderen factuur: ' + result.error)
+            toast.error('Fout bij verwijderen factuur: ' + result.error)
         }
     }
 
@@ -115,7 +116,7 @@ Totaal: ${formatPrice(customer.grandTotal)}
         if (result.success) {
             router.refresh()
         } else {
-            alert('Fout bij verwijderen order: ' + result.error)
+            toast.error('Fout bij verwijderen order: ' + result.error)
         }
     }
 
