@@ -51,6 +51,7 @@ export interface Database {
                     sort_order?: number | null
                     stock_quantity?: number
                 }
+                Relationships: []
             }
             orders: {
                 Row: {
@@ -65,7 +66,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
-                    company_name: string | null
+                    company_name?: string | null
                     email?: string | null
                     created_at?: string
                     week_number?: number | null
@@ -75,7 +76,7 @@ export interface Database {
                 }
                 Update: {
                     id?: string
-                    company_name: string | null
+                    company_name?: string | null
                     email?: string | null
                     created_at?: string
                     week_number?: number | null
@@ -83,6 +84,7 @@ export interface Database {
                     notes?: string | null
                     order_number?: number
                 }
+                Relationships: []
             }
             order_items: {
                 Row: {
@@ -112,6 +114,22 @@ export interface Database {
                     actual_weight?: number | null
                     is_completed?: boolean
                 }
+                Relationships: [
+                    {
+                        foreignKeyName: "order_items_order_id_fkey"
+                        columns: ["order_id"]
+                        isOneToOne: false
+                        referencedRelation: "orders"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "order_items_product_id_fkey"
+                        columns: ["product_id"]
+                        isOneToOne: false
+                        referencedRelation: "products"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             recurring_orders: {
                 Row: {
@@ -144,6 +162,7 @@ export interface Database {
                     updated_at?: string
                     interval?: 'weekly' | 'bi-weekly' | 'monthly' | 'manual'
                 }
+                Relationships: []
             }
             recurring_order_items: {
                 Row: {
@@ -164,27 +183,56 @@ export interface Database {
                     product_id?: string
                     quantity?: number
                 }
+                Relationships: [
+                    {
+                        foreignKeyName: "recurring_order_items_recurring_order_id_fkey"
+                        columns: ["recurring_order_id"]
+                        isOneToOne: false
+                        referencedRelation: "recurring_orders"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "recurring_order_items_product_id_fkey"
+                        columns: ["product_id"]
+                        isOneToOne: false
+                        referencedRelation: "products"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             store_settings: {
                 Row: {
                     id: string
                     key: string
-                    value: any // Using any or specific interface depending on what we store
+                    value: Json
                     updated_at: string
                 }
                 Insert: {
                     id?: string
                     key: string
-                    value: any
+                    value: Json
                     updated_at?: string
                 }
                 Update: {
                     id?: string
                     key?: string
-                    value?: any
+                    value?: Json
                     updated_at?: string
                 }
+                Relationships: []
             }
+        }
+        Views: {
+            [_ in never]: never
+        }
+        Functions: {
+            [_ in never]: never
+        }
+        Enums: {
+            [_ in never]: never
+        }
+        CompositeTypes: {
+            [_ in never]: never
         }
     }
 }

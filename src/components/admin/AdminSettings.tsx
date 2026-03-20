@@ -31,8 +31,9 @@ export default function AdminSettings() {
     const loadSettings = async () => {
         setLoading(true)
         const result = await getStoreSettings('availability')
-        if (result.success && result.data) {
-            setOpenDays(result.data.open_days || [1, 2, 3, 4, 5])
+        if (result.success && result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+            const data = result.data as Record<string, unknown>
+            setOpenDays((data.open_days as number[]) || [1, 2, 3, 4, 5])
         }
         setLoading(false)
     }

@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { upsertRecurringOrder } from '@/app/admin/actions'
 import { Plus, Trash2, Search, Percent } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 interface RecurringOrderEditorProps {
@@ -102,7 +103,7 @@ export default function RecurringOrderEditor({
 
     const handleSubmit = async () => {
         if (!companyName || !email) {
-            alert('Bedrijfsnaam en e-mail zijn verplicht')
+            toast.warning('Bedrijfsnaam en e-mail zijn verplicht')
             return
         }
 
@@ -112,7 +113,7 @@ export default function RecurringOrderEditor({
         }))
 
         if (items.length === 0) {
-            alert('Voeg ten minste één product toe')
+            toast.warning('Voeg ten minste één product toe')
             return
         }
 
@@ -134,7 +135,7 @@ export default function RecurringOrderEditor({
             onSuccess()
             onOpenChange(false)
         } else {
-            alert('Fout bij opslaan: ' + result.error)
+            toast.error('Fout bij opslaan: ' + result.error)
         }
     }
 
@@ -171,7 +172,7 @@ export default function RecurringOrderEditor({
                             <Label htmlFor="interval">Interval</Label>
                             <Select
                                 value={interval}
-                                onValueChange={(val: any) => setInterval(val)}
+                                onValueChange={(val) => setInterval(val as typeof interval)}
                             >
                                 <SelectTrigger id="interval">
                                     <SelectValue placeholder="Selecteer interval" />

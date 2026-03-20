@@ -5,13 +5,24 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Scale, Save, Loader2, RotateCcw, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { OrderWithItems } from '@/types'
+
+type OrderItemWithProduct = OrderWithItems['order_items'][number]
+
+interface EditData {
+    totalWeight: number
+    displayTotalWeight: string
+    units: number[]
+    displayUnits: string[]
+    isExpanded: boolean
+}
 
 interface OrderItemRowProps {
-    item: any
+    item: OrderItemWithProduct
     isCompleted: boolean
     isItemCompleted: boolean
     isWeightAdjustable: boolean
-    editData: any
+    editData: EditData | undefined
     saving: boolean
     hasChanged: boolean
     onToggleCompletion: () => void

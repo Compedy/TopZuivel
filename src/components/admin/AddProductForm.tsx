@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { addProduct } from '@/app/admin/actions'
 import { Loader2, Plus, X } from 'lucide-react'
 import { Product } from '@/types'
+import { toast } from 'sonner'
 
 interface AddProductFormProps {
     products: Product[]
@@ -54,7 +55,7 @@ export default function AddProductForm({ products, onSuccess, onCancel }: AddPro
 
         const finalCategory = showNewCategory ? newCategoryName : formData.category
         if (!finalCategory) {
-            alert('Selecteer of voer een categorie in')
+            toast.warning('Selecteer of voer een categorie in')
             setLoading(false)
             return
         }
@@ -68,12 +69,12 @@ export default function AddProductForm({ products, onSuccess, onCancel }: AddPro
             is_price_per_kilo: productType === 'kilo',
             is_active: formData.is_active,
             type_group: 'Algemeen' // Defaulting to Algemeen as requested to remove from UI
-        } as any)
+        })
 
         if (result.success) {
             onSuccess()
         } else {
-            alert('Fout bij toevoegen product: ' + result.error)
+            toast.error('Fout bij toevoegen product: ' + result.error)
         }
         setLoading(false)
     }

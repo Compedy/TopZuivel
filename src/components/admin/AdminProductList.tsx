@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Plus, Edit2, Save, X, Trash2, FileText, GripVertical } from 'lucide-react'
 import AddProductForm from './AddProductForm'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 import {
     DndContext,
@@ -74,7 +75,7 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
 
             const result = await updateProductSortOrder(updates)
             if (!result.success) {
-                alert('Fout bij herordenen: ' + result.error)
+                toast.error('Fout bij herordenen: ' + result.error)
                 setProducts(initialProducts) // Revert on failure
             } else {
                 router.refresh()
@@ -161,7 +162,7 @@ function SortableProductRow({ product, categories }: { product: Product, categor
     )
 }
 
-function ProductRow({ product, categories, dragHandleProps }: { product: Product, categories: string[], dragHandleProps?: any }) {
+function ProductRow({ product, categories, dragHandleProps }: { product: Product, categories: string[], dragHandleProps?: Record<string, unknown> }) {
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -181,7 +182,7 @@ function ProductRow({ product, categories, dragHandleProps }: { product: Product
             setIsEditing(false)
             router.refresh()
         } else {
-            alert('Fout bij opslaan: ' + result.error)
+            toast.error('Fout bij opslaan: ' + result.error)
         }
         setLoading(false)
     }
@@ -192,7 +193,7 @@ function ProductRow({ product, categories, dragHandleProps }: { product: Product
         setLoading(true)
         const result = await deleteProduct(product.id)
         if (!result.success) {
-            alert('Fout bij verwijderen: ' + result.error)
+            toast.error('Fout bij verwijderen: ' + result.error)
         } else {
             router.refresh()
         }

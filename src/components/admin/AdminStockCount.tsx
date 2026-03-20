@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Minus, Search, Save, Loader2, PackageOpen, LayoutGrid, CheckCircle } from 'lucide-react'
 import { updateStockLevels } from '@/app/admin/actions'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle } from 'lucide-react'
@@ -20,12 +21,14 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 
+type StockProduct = Product & { display_stock?: string }
+
 interface AdminStockCountProps {
     initialProducts: Product[]
 }
 
 export default function AdminStockCount({ initialProducts }: AdminStockCountProps) {
-    const [products, setProducts] = useState(initialProducts)
+    const [products, setProducts] = useState<StockProduct[]>(initialProducts)
     const [modifiedIds, setModifiedIds] = useState<Set<string>>(new Set())
     const [search, setSearch] = useState('')
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -40,11 +43,11 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
     }, [initialProducts])
 
     const filteredProducts = useMemo(() => {
-        return products.filter((p: Product) => {
+        return products.filter(p => {
             const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
             const matchesCategory = !activeCategory || p.category === activeCategory
             return matchesSearch && matchesCategory
-        }).sort((a: Product, b: Product) => (a.sort_order || 0) - (b.sort_order || 0))
+        }).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     }, [products, search, activeCategory])
 
     const updateStock = (id: string, delta: number) => {
@@ -92,7 +95,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
     const handleInputChange = (id: string, val: string) => {
         const rawVal = val.replace(',', '.')
         const num = parseFloat(rawVal) || 0
-        setProducts((prev: Product[]) => prev.map((p: any) => {
+        setProducts((prev) => prev.map((p) => {
             if (p.id === id) {
                 if (num !== initialProducts.find(ip => ip.id === id)?.stock_quantity) {
                     setModifiedIds(new Set(modifiedIds).add(id))
@@ -132,7 +135,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
             setModifiedIds(new Set())
             // No need to alert, just clear state. InitialProducts will be updated by revalidate
         } else {
-            alert('Fout bij opslaan: ' + result.error)
+            toast.error('Fout bij opslaan: ' + result.error)
         }
         setSaving(false)
     }
@@ -204,7 +207,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
 
             {/* Product List - Tablet Optimized */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProducts.map((product: Product) => {
+                {filteredProducts.map((product) => {
                     const isModified = modifiedIds.has(product.id)
                     return (
                         <Card
@@ -241,7 +244,7 @@ export default function AdminStockCount({ initialProducts }: AdminStockCountProp
                                         <Input
                                             type="text"
                                             inputMode="decimal"
-                                            value={(product as any).display_stock ?? product.stock_quantity ?? 0}
+                                            value={product.display_stock ?? product.stock_quantity ?? 0}
                                             onChange={(e) => handleInputChange(product.id, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
                                             className="h-16 text-center text-3xl font-black border-none bg-transparent focus-visible:ring-0"

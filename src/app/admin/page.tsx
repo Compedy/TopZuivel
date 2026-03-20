@@ -28,21 +28,22 @@ export default async function AdminPage() {
 
     // 2. Fetch Orders
     // We select company_name and email directly from orders for guests
-    const { data: orders, error: ordersError } = await (supabase
+    const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select(`
             *,
             order_items (
                 id,
+                order_id,
                 product_id,
                 quantity,
                 price_snapshot,
                 actual_weight,
                 is_completed,
-                products (name, unit_label, category, is_price_per_kilo, weight_per_unit, sort_order)
+                products (name, unit_label, category, is_price_per_kilo, weight_per_unit, stock_quantity, sort_order, is_deleted)
             )
         `)
-        .order('created_at', { ascending: false }) as any)
+        .order('created_at', { ascending: false })
 
     if (ordersError) {
         console.error('Error fetching orders:', ordersError)

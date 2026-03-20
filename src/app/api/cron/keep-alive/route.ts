@@ -1,6 +1,7 @@
 
 import { wakeUpDatabase } from '@/app/admin/actions'
 import { NextResponse } from 'next/server'
+import { timingSafeCompare } from '@/lib/crypto-utils'
 
 export async function GET(request: Request) {
     // Basic protection using a secret from environment
@@ -8,10 +9,11 @@ export async function GET(request: Request) {
     const secret = searchParams.get('secret')
     const authHeader = request.headers.get('authorization')
 
+    const cronSecret = process.env.CRON_SECRET
     if (
-        process.env.CRON_SECRET &&
-        secret !== process.env.CRON_SECRET &&
-        authHeader !== `Bearer ${process.env.CRON_SECRET}`
+        cronSecret &&
+        !timingSafeCompare(secret ?? '', cronSecret) &&
+        !timingSafeCompare(authHeader ?? '', `Bearer ${cronSecret}`)
     ) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -28,7 +30,8 @@ export async function GET(request: Request) {
             message: 'Database keep-alive successful',
             ...result
         })
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        return NextResponse.json({ error: message }, { status: 500 })
     }
 }

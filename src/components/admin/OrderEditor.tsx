@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { updateOrderMetadata, addOrderItem, removeOrderItem, updateOrderItemQuantity } from '@/app/admin/actions'
 import { Plus, Trash2, Search, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface OrderEditorProps {
     open: boolean
@@ -92,7 +93,7 @@ export default function OrderEditor({
         if (result.success) {
             onSuccess()
         } else {
-            alert('Fout bij bijwerken: ' + result.error)
+            toast.error('Fout bij bijwerken: ' + result.error)
         }
     }
 
@@ -109,7 +110,7 @@ export default function OrderEditor({
             const result = await updateOrderItemQuantity(existingItem.id, newQty)
             setIsSubmitting(false)
             if (result.success) onSuccess()
-            else alert('Fout: ' + result.error)
+            else toast.error('Fout: ' + result.error)
         } else {
             // Temporary ID for optimistic update
             const tempId = `temp-${Date.now()}`
@@ -132,7 +133,7 @@ export default function OrderEditor({
             setIsSubmitting(false)
             if (result.success) onSuccess()
             else {
-                alert('Fout: ' + result.error)
+                toast.error('Fout: ' + result.error)
                 // Revert on failure
                 setLocalItems(prev => prev.filter(i => i.id !== tempId))
             }
@@ -156,7 +157,7 @@ export default function OrderEditor({
         if (result.success) {
             onSuccess()
         } else {
-            alert('Fout bij verwijderen item: ' + result.error)
+            toast.error('Fout bij verwijderen item: ' + result.error)
             // Note: The next prop sync will restore the item on error
         }
     }
@@ -177,7 +178,7 @@ export default function OrderEditor({
         if (result.success) {
             onSuccess()
         } else {
-            alert('Fout bij wijzigen aantal: ' + result.error)
+            toast.error('Fout bij wijzigen aantal: ' + result.error)
             // Revert will happen via prop sync
         }
     }
@@ -195,7 +196,7 @@ export default function OrderEditor({
         if (result.success) {
             onSuccess()
         } else {
-            alert('Fout bij wijzigen prijs: ' + result.error)
+            toast.error('Fout bij wijzigen prijs: ' + result.error)
             // Revert will happen via prop sync
         }
     }

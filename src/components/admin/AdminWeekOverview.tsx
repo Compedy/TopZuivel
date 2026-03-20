@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Product, OrderWithItems, OrderItem } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { getCustomWeekData, groupOrdersByWeek } from '@/lib/date-utils'
+import { getCustomWeekData, groupOrdersByWeek, WeekData } from '@/lib/date-utils'
 import { ChevronDown, ChevronRight, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { jsPDF } from 'jspdf'
@@ -67,7 +67,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
         }))
     }
 
-    const exportToPDF = (group: { weekData: any, orders: OrderWithItems[] }) => {
+    const exportToPDF = (group: { weekData: WeekData, orders: OrderWithItems[] }) => {
         const totals = calculateTotals(group.orders)
         const doc = new jsPDF({
             orientation: 'portrait',
@@ -166,7 +166,7 @@ export default function AdminWeekOverview({ products, orders }: AdminWeekOvervie
 
     return (
         <div className="space-y-4">
-            {weekGroups.map((group: { weekData: any, orders: OrderWithItems[] }, index: number) => {
+            {weekGroups.map((group, index) => {
                 const key = `${group.weekData.year}-W${group.weekData.weekNumber}`
                 const isExpanded = !!expandedWeeks[key]
                 const totals = calculateTotals(group.orders)

@@ -22,7 +22,7 @@ export async function submitOrder(orderDetails: { companyName: string, email: st
     const { companyName, email, cartItems, notes } = validated.data
 
     // Use admin client to bypass RLS for public orders
-    const supabase = createAdminClient() as any
+    const supabase = createAdminClient()
 
     // 1. Calculate Delivery Week (Week n+1)
     // We use the custom week data logic which is now NL-timezone aware.
