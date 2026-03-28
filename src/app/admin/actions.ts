@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { Database, Json, RecurringOrder, RecurringOrderItem } from '@/types'
 import { cookies } from 'next/headers'
-import { getCustomWeekData } from '@/lib/date-utils'
+import { getCustomWeekData, getDeliveryDate } from '@/lib/date-utils'
 
 type ProductUpdate = Database['public']['Tables']['products']['Update']
 
@@ -579,17 +579,43 @@ export async function deleteInvoice(email: string, monthKey: string) {
 
     // Parse monthKey (YYYY-MM)
     const [year, month] = monthKey.split('-').map(Number)
-    const startDate = new Date(year, month - 1, 1).toISOString()
-    const endDate = new Date(year, month, 0, 23, 59, 59).toISOString()
 
-    console.log(`[AdminAction] Deleting invoice for ${email} in ${monthKey} (${startDate} to ${endDate})`)
+    // Since delivery date is 1-7 days after order date, fetch orders from
+    // 7 days before the month starts to cover all orders that could deliver in this month.
+    const fetchStart = new Date(year, month - 1, 1)
+    fetchStart.setDate(fetchStart.getDate() - 7)
+    const fetchEnd = new Date(year, month, 0, 23, 59, 59)
+
+    const { data: orders, error: fetchError } = await adminSupabase
+        .from('orders')
+        .select('id, created_at')
+        .eq('email', email)
+        .gte('created_at', fetchStart.toISOString())
+        .lte('created_at', fetchEnd.toISOString())
+
+    if (fetchError) {
+        console.error('Delete invoice fetch error:', fetchError)
+        return { success: false, error: fetchError.message }
+    }
+
+    // Filter to orders whose delivery date (next Wednesday) falls in the target month
+    const orderIds = (orders || [])
+        .filter(order => {
+            const delivery = getDeliveryDate(new Date(order.created_at))
+            const deliveryMonth = `${delivery.getFullYear()}-${String(delivery.getMonth() + 1).padStart(2, '0')}`
+            return deliveryMonth === monthKey
+        })
+        .map(o => o.id)
+
+    if (orderIds.length === 0) {
+        revalidatePath('/admin')
+        return { success: true }
+    }
 
     const { error } = await adminSupabase
         .from('orders')
         .delete()
-        .eq('email', email)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
+        .in('id', orderIds)
 
     if (error) {
         console.error('Delete invoice error:', error)
