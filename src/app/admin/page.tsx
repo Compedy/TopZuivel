@@ -40,7 +40,7 @@ export default async function AdminPage() {
                 price_snapshot,
                 actual_weight,
                 is_completed,
-                products (name, unit_label, category, is_price_per_kilo, weight_per_unit, stock_quantity, sort_order, is_deleted)
+                products (name, unit_label, category, is_price_per_kilo, weight_per_unit, stock_quantity, stock_quantity, sort_order, is_deleted)
             )
         `)
         .order('created_at', { ascending: false })
