@@ -1,4 +1,5 @@
 import { Product, OrderWithItems } from '@/types'
+import { getDeliveryDate } from '@/lib/date-utils'
 
 export interface CustomerMonthlyTotal {
     email: string
@@ -18,8 +19,8 @@ export function groupOrdersByMonthAndCustomer(orders: OrderWithItems[], products
     const months: Record<string, Record<string, CustomerAccumulator>> = {}
 
     orders.forEach(order => {
-        const date = new Date(order.created_at)
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        const deliveryDate = getDeliveryDate(new Date(order.created_at))
+        const monthKey = `${deliveryDate.getFullYear()}-${String(deliveryDate.getMonth() + 1).padStart(2, '0')}`
         const email = order.email || 'gast@topzuivel.nl'
 
         if (!months[monthKey]) months[monthKey] = {}

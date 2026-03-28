@@ -58,6 +58,23 @@ function formatDateShort(date: Date) {
     });
 }
 
+/**
+ * Returns the next Wednesday after the given date.
+ * If the date falls on a Wednesday, returns the following Wednesday (7 days later).
+ * Uses Europe/Amsterdam timezone for day-of-week calculation.
+ */
+export function getDeliveryDate(orderDate: Date): Date {
+    const nlDateStr = orderDate.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })
+    const nlDate = new Date(nlDateStr)
+
+    const dayOfWeek = nlDate.getDay() // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    const daysUntilWed = dayOfWeek === 3 ? 7 : (3 - dayOfWeek + 7) % 7
+
+    const delivery = new Date(nlDate)
+    delivery.setDate(nlDate.getDate() + daysUntilWed)
+    return delivery
+}
+
 import { OrderWithItems } from '@/types'
 
 /**
