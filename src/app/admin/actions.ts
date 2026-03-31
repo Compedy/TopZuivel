@@ -626,6 +626,29 @@ export async function deleteInvoice(email: string, monthKey: string) {
     return { success: true }
 }
 
+export async function markOrdersAsInvoiced(orderIds: string[]) {
+    const cookieStore = await cookies()
+    const isAdmin = cookieStore.get('admin_session')?.value === 'true'
+    if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+    if (orderIds.length === 0) return { success: true }
+
+    const adminSupabase = createAdminClient()
+
+    const { error } = await adminSupabase
+        .from('orders')
+        .update({ is_invoiced: true })
+        .in('id', orderIds)
+
+    if (error) {
+        console.error('Mark invoiced error:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin')
+    return { success: true }
+}
+
 export async function updateProductSortOrder(updates: { id: string, sort_order: number }[]) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'

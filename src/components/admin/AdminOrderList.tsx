@@ -18,8 +18,7 @@ import {
     toggleOrderItemCompletion,
     deleteOrder
 } from '@/app/admin/actions'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { generateOrderPDF, getDisplayQuantity } from '@/lib/pdf-utils'
 import OrderSearch from './OrderSearch'
 import OrderCard from './OrderCard'
 import OrderEditor from './OrderEditor'
@@ -29,14 +28,6 @@ import { toast } from 'sonner'
 interface AdminOrderListProps {
     initialOrders: OrderWithItems[]
     products: Product[]
-}
-
-const getDisplayQuantity = (qty: number, unit?: string) => {
-    const normalizedUnit = unit?.toLowerCase() || ''
-    if (normalizedUnit === 'st' || normalizedUnit === 'stuk' || normalizedUnit === 'blok') {
-        return Math.round(qty)
-    }
-    return qty
 }
 
 export default function AdminOrderList({ initialOrders, products }: AdminOrderListProps) {
@@ -293,106 +284,9 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
         setSaving(null)
     }
 
-    const getBase64ImageFromURL = (url: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const img = new Image()
-            img.setAttribute('crossOrigin', 'anonymous')
-            img.onload = () => {
-                const canvas = document.createElement('canvas')
-                canvas.width = img.width
-                canvas.height = img.height
-                const ctx = canvas.getContext('2d')
-                ctx?.drawImage(img, 0, 0)
-                const dataURL = canvas.toDataURL('image/png')
-                resolve(dataURL)
-            }
-            img.onerror = (error) => reject(error)
-            img.src = url
-        })
-    }
-
     const generatePDF = async (order: OrderWithItems) => {
         try {
-            const doc = new jsPDF()
-            const today = new Date().toLocaleDateString('nl-NL')
-            const orderDate = new Date(order.created_at).toLocaleDateString('nl-NL')
-
-            // Add Logo with try/catch for loading issues
-            try {
-                const logoUrl = '/logo.png'
-                const imgData = await getBase64ImageFromURL(logoUrl)
-                doc.addImage(imgData, 'PNG', 15, 10, 40, 20)
-            } catch (imgError) {
-                console.warn('Could not load logo for PDF:', imgError)
-                // Continue without logo
-                doc.setFontSize(18)
-                doc.setTextColor(44, 62, 80)
-                doc.text('TOP ZUIVEL', 15, 20)
-            }
-
-            // Header Info
-            doc.setFontSize(20)
-            doc.setTextColor(44, 62, 80)
-            doc.text('Order Overzicht', 70, 25)
-
-            doc.setFontSize(10)
-            doc.setTextColor(100)
-            doc.text(`Klant: ${order.company_name || 'Onbekend'}`, 15, 45)
-            doc.text(`Email: ${order.email}`, 15, 52)
-            doc.text(`Besteldatum: ${orderDate}`, 15, 59)
-            doc.text(`Order #: ${order.order_number}`, 15, 66)
-            if (order.notes) {
-                const notesY = 73
-                doc.setFont('helvetica', 'bold')
-                doc.text('Opmerking:', 15, notesY)
-                doc.setFont('helvetica', 'normal')
-                const splitNotes = doc.splitTextToSize(order.notes, 160)
-                doc.text(splitNotes, 40, notesY)
-            }
-
-            // Table
-            const sortedItems = [...order.order_items].sort((a, b) =>
-                (a.products?.sort_order ?? 999) - (b.products?.sort_order ?? 999)
-            )
-
-            const tableData = sortedItems.map(item => {
-                const standardWeight = item.products?.weight_per_unit || 1
-                const weight = item.actual_weight ?? (item.quantity * standardWeight)
-                const isPerKilo = item.products?.is_price_per_kilo
-                const unitLabel = item.products?.unit_label?.toLowerCase() || ''
-                const isPieceBased = ['st', 'stuk', 'blok'].includes(unitLabel)
-
-                const displayQty = getDisplayQuantity(item.quantity, item.products?.unit_label)
-
-                return [
-                    item.products?.name || 'Onbekend product',
-                    `${displayQty} ${item.products?.unit_label || 'st'}`,
-                    `${weight.toFixed(3)} kg`
-                ]
-            })
-
-            autoTable(doc, {
-                startY: 75,
-                head: [['Product', 'Aantal', 'Gewicht']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [44, 62, 80] },
-                styles: { fontSize: 9 }
-            })
-
-            // Totals
-            const totalLines = order.order_items.length
-
-            const lastY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10
-            doc.setFont('helvetica', 'bold')
-            doc.text(`Totaal aantal regels: ${totalLines}`, 15, lastY)
-
-            // Footer
-            doc.setFontSize(8)
-            doc.setFont('helvetica', 'italic')
-            doc.text('Top Zuivel - Vers van de boerderij', 15, 285)
-
-            doc.save(`TopZuivel_Order_${order.company_name}_${today}.pdf`)
+            await generateOrderPDF(order)
         } catch (err) {
             console.error('General PDF error:', err)
             toast.error('Fout bij het genereren van de PDF.')
@@ -413,16 +307,6 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             if (!confirm('Er zijn nog niet-opgeslagen wijzigingen in deze bestelling. Wilt u doorgaan en deze negeren?')) {
                 return
             }
-        }
-
-        const allItemsCompleted = order.order_items.every(i => i.is_completed)
-        if (!allItemsCompleted) {
-            if (!confirm('Niet alle regels zijn gemarkeerd als gereed. Wilt u toch de PDF printen? De bestelling blijft in dat geval OPEN staan.')) {
-                return
-            }
-            // Just generate PDF and stay open
-            await generatePDF(order)
-            return
         }
 
         setCompleting(order.id)
