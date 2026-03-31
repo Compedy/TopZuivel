@@ -316,7 +316,7 @@ function ProductRow({ product, categories, dragHandleProps }: { product: Product
     return (
         <div className="hover:bg-muted/30 transition-colors text-sm">
             <div className="flex items-center justify-between p-3 md:grid md:grid-cols-12 md:gap-4">
-                <div className="md:col-span-1 flex items-center justify-center p-2 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-primary transition-colors" {...dragHandleProps}>
+                <div className="md:col-span-1 flex items-center justify-center p-2 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-primary transition-colors" style={{ touchAction: 'none' }} {...dragHandleProps}>
                     <GripVertical className="h-4 w-4" />
                 </div>
                 <div className="md:col-span-3 flex flex-col truncate mr-2">
