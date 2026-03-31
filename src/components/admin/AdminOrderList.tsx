@@ -341,13 +341,33 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             doc.text(`Email: ${order.email}`, 15, 52)
             doc.text(`Besteldatum: ${orderDate}`, 15, 59)
             doc.text(`Order #: ${order.order_number}`, 15, 66)
+            let tableStartY = 75
+
             if (order.notes) {
                 const notesY = 73
+                const splitNotes = doc.splitTextToSize(order.notes, 170)
+                const notesBlockHeight = 8 + splitNotes.length * 5
+
+                // Highlighted box
+                doc.setFillColor(255, 249, 219)
+                doc.setDrawColor(204, 122, 0)
+                doc.setLineWidth(0.8)
+                doc.rect(13, notesY - 4, 184, notesBlockHeight, 'FD')
+
+                doc.setFontSize(9)
                 doc.setFont('helvetica', 'bold')
-                doc.text('Opmerking:', 15, notesY)
+                doc.setTextColor(153, 77, 0)
+                doc.text('OPMERKING:', 15, notesY + 1)
+
                 doc.setFont('helvetica', 'normal')
-                const splitNotes = doc.splitTextToSize(order.notes, 160)
-                doc.text(splitNotes, 40, notesY)
+                doc.setTextColor(51, 26, 0)
+                doc.text(splitNotes, 15, notesY + 7)
+
+                doc.setTextColor(0, 0, 0)
+                doc.setFontSize(10)
+                doc.setFont('helvetica', 'normal')
+
+                tableStartY = notesY + notesBlockHeight + 4
             }
 
             // Table
@@ -372,7 +392,7 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             })
 
             autoTable(doc, {
-                startY: 75,
+                startY: tableStartY,
                 head: [['Product', 'Aantal', 'Gewicht']],
                 body: tableData,
                 theme: 'striped',
@@ -413,16 +433,6 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
             if (!confirm('Er zijn nog niet-opgeslagen wijzigingen in deze bestelling. Wilt u doorgaan en deze negeren?')) {
                 return
             }
-        }
-
-        const allItemsCompleted = order.order_items.every(i => i.is_completed)
-        if (!allItemsCompleted) {
-            if (!confirm('Niet alle regels zijn gemarkeerd als gereed. Wilt u toch de PDF printen? De bestelling blijft in dat geval OPEN staan.')) {
-                return
-            }
-            // Just generate PDF and stay open
-            await generatePDF(order)
-            return
         }
 
         setCompleting(order.id)
