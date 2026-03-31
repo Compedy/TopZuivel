@@ -626,7 +626,7 @@ export async function deleteInvoice(email: string, monthKey: string) {
     return { success: true }
 }
 
-export async function markOrdersAsInvoiced(orderIds: string[]) {
+export async function markOrdersAsInvoiced(orderIds: string[], invoiced = true) {
     const cookieStore = await cookies()
     const isAdmin = cookieStore.get('admin_session')?.value === 'true'
     if (!isAdmin) return { success: false, error: 'Unauthorized' }
@@ -637,7 +637,7 @@ export async function markOrdersAsInvoiced(orderIds: string[]) {
 
     const { error } = await adminSupabase
         .from('orders')
-        .update({ is_invoiced: true })
+        .update({ is_invoiced: invoiced })
         .in('id', orderIds)
 
     if (error) {

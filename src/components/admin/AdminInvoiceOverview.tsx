@@ -31,6 +31,7 @@ export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceO
     const [orderToEdit, setOrderToEdit] = useState<OrderWithItems | null>(null)
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
     const [isDeletingOrder, setIsDeletingOrder] = useState<string | null>(null)
+    const [expandedCustomers, setExpandedCustomers] = useState<Record<string, boolean>>({})
     const [isMarkingInvoiced, setIsMarkingInvoiced] = useState<string | null>(null)
     const [generatingPDF, setGeneratingPDF] = useState<string | null>(null)
 
@@ -83,16 +84,16 @@ export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceO
         return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })
     }
 
-    const handleMarkInvoiced = async (customer: CustomerMonthlyTotal) => {
+    const handleToggleInvoiced = async (customer: CustomerMonthlyTotal, allInvoiced: boolean) => {
         const id = `${customer.month}-${customer.email}`
         setIsMarkingInvoiced(id)
         const orderIds = customer.orders.map(o => o.id)
-        const result = await markOrdersAsInvoiced(orderIds)
+        const result = await markOrdersAsInvoiced(orderIds, !allInvoiced)
         setIsMarkingInvoiced(null)
         if (result.success) {
             router.refresh()
         } else {
-            toast.error('Fout bij markeren als gefactureerd: ' + result.error)
+            toast.error('Fout bij bijwerken factuurstatus: ' + result.error)
         }
     }
 
@@ -189,150 +190,151 @@ export default function AdminInvoiceOverview({ products, orders }: AdminInvoiceO
                         </div>
 
                         {expandedMonths[month] && (
-                            <div className="columns-1 md:columns-2 gap-4 pl-6 space-y-4 md:space-y-0">
+                            <div className="space-y-2 pl-6">
                                 {customers.map(customer => {
                                     const id = `${month}-${customer.email}`
                                     const allInvoiced = customer.orders.every(o => o.is_invoiced)
+                                    const isExpanded = !!expandedCustomers[id]
                                     return (
-                                        <Card key={id} className="relative overflow-hidden mb-4 break-inside-avoid shadow-sm hover:shadow-md transition-shadow">
-                                            <CardHeader className="pb-2 bg-muted/30">
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <div className="min-w-0">
-                                                        <CardTitle className="text-lg truncate">{customer.mostUsedCompanyName}</CardTitle>
-                                                        <p className="text-xs text-muted-foreground truncate">{customer.email}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        {!allInvoiced && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-8 gap-1 text-xs text-green-700 border-green-300 hover:bg-green-50"
-                                                                onClick={() => handleMarkInvoiced(customer)}
-                                                                disabled={isMarkingInvoiced === id}
-                                                            >
-                                                                {isMarkingInvoiced === id
-                                                                    ? <Loader2 className="h-3 w-3 animate-spin" />
-                                                                    : <CheckCircle2 className="h-3 w-3" />}
-                                                                Gefactureerd
-                                                            </Button>
-                                                        )}
-                                                        {allInvoiced && (
-                                                            <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                                                                <Check className="h-3 w-3" /> Gefactureerd
-                                                            </span>
-                                                        )}
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                            onClick={() => handleDeleteInvoice(customer)}
-                                                            disabled={isDeleting === id}
-                                                        >
-                                                            {isDeleting === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                                        </Button>
-                                                    </div>
+                                        <Card key={id} className="overflow-hidden shadow-sm">
+                                            {/* Always-visible header row */}
+                                            <div
+                                                className="flex items-center gap-3 px-4 py-3 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                                                onClick={() => setExpandedCustomers(prev => ({ ...prev, [id]: !prev[id] }))}
+                                            >
+                                                {isExpanded
+                                                    ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="font-semibold text-sm">{customer.mostUsedCompanyName}</span>
+                                                    <span className="text-xs text-muted-foreground ml-2">{customer.email}</span>
                                                 </div>
-                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                <div className="flex flex-wrap gap-1 items-center" onClick={e => e.stopPropagation()}>
                                                     {customer.orders.map(order => (
-                                                        <div key={order.id} className="flex items-center gap-1 bg-background border rounded-md pr-1">
+                                                        <div key={order.id} className="flex items-center bg-background border rounded-md">
+                                                            <span className="text-[10px] font-mono px-2 py-1 border-r">#{order.order_number}</span>
                                                             <Button
                                                                 variant="ghost"
-                                                                size="sm"
-                                                                className="h-7 text-[10px] gap-1 px-2 border-r rounded-r-none hover:bg-muted"
-                                                                onClick={() => {
-                                                                    setOrderToEdit(order)
-                                                                    setIsEditorOpen(true)
-                                                                }}
+                                                                size="icon"
+                                                                className="h-6 w-6 rounded-none hover:bg-muted"
+                                                                onClick={() => { setOrderToEdit(order); setIsEditorOpen(true) }}
+                                                                title="Bewerken"
                                                             >
                                                                 <Pencil className="h-3 w-3" />
-                                                                Order #{order.order_number}
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-6 w-6 hover:bg-muted"
+                                                                className="h-6 w-6 rounded-none hover:bg-muted"
                                                                 onClick={(e) => handleGeneratePDF(e, order)}
                                                                 disabled={generatingPDF === order.id}
-                                                                title="PDF downloaden"
+                                                                title="PDF"
                                                             >
                                                                 {generatingPDF === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                className="h-6 w-6 rounded-l-none text-destructive hover:text-destructive hover:bg-destructive/10"
                                                                 onClick={(e) => handleDeleteOrder(e, order)}
                                                                 disabled={isDeletingOrder === order.id}
+                                                                title="Verwijderen"
                                                             >
                                                                 {isDeletingOrder === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                                                             </Button>
                                                         </div>
                                                     ))}
                                                 </div>
-                                            </CardHeader>
-                                            <CardContent className="pt-4">
-                                                <div className="space-y-6">
-                                                    {customer.orders.map(order => {
-                                                        let orderTotal = 0
-                                                        return (
-                                                            <div key={order.id} className="space-y-2 border-b last:border-0 pb-4 last:pb-0">
-                                                                <div className="flex justify-between items-center bg-muted/20 p-2 rounded">
-                                                                    <span className="text-xs font-bold text-muted-foreground uppercase">Order #{order.order_number}</span>
-                                                                    <div className="flex items-center gap-2">
-                                                                        {order.is_invoiced && (
-                                                                            <span className="text-[10px] text-green-600 font-medium flex items-center gap-0.5">
-                                                                                <Check className="h-3 w-3" /> gefactureerd
-                                                                            </span>
-                                                                        )}
-                                                                        <span className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString('nl-NL')}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="space-y-1.5 pl-2">
-                                                                    {order.order_items?.map(item => {
-                                                                        const isPieceBased = ['st', 'stuk', 'blok'].includes(item.products?.unit_label?.toLowerCase() || '')
-                                                                        const isPricePerKilo = item.products?.is_price_per_kilo
-                                                                        const stdWeight = item.products?.weight_per_unit || 0
-
-                                                                        let linePrice = 0
-                                                                        let displayQty = ""
-
-                                                                        if (isPieceBased) {
-                                                                            const weight = item.actual_weight !== null ? item.actual_weight : (item.quantity * stdWeight)
-                                                                            linePrice = isPricePerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
-                                                                            displayQty = `${item.quantity} ${item.products?.unit_label}`
-                                                                            if (item.actual_weight !== null || (isPricePerKilo && stdWeight > 0)) {
-                                                                                displayQty += ` (${weight.toFixed(2)} kg)`
-                                                                            }
-                                                                        } else {
-                                                                            linePrice = item.quantity * item.price_snapshot
-                                                                            displayQty = `${item.quantity.toFixed(2)} ${item.products?.unit_label}`
-                                                                        }
-
-                                                                        orderTotal += linePrice
-
-                                                                        return (
-                                                                            <div key={item.id} className="flex justify-between text-xs items-baseline">
-                                                                                <span className="flex-1 mr-4">
-                                                                                    <span className="font-medium">{displayQty}</span> {item.products?.name}
-                                                                                    <span className="text-[10px] text-muted-foreground ml-1">@ {formatPrice(item.price_snapshot)}</span>
-                                                                                </span>
-                                                                                <span className="text-muted-foreground font-mono">{formatPrice(linePrice)}</span>
-                                                                            </div>
-                                                                        )
-                                                                    })}
-                                                                    <div className="flex justify-end pt-1">
-                                                                        <span className="text-[10px] font-bold">Subtotaal: {formatPrice(orderTotal)}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                    <div className="border-t pt-3 mt-2 flex justify-between font-bold text-base">
-                                                        <span>Maand Totaal</span>
-                                                        <span className="text-primary">{formatPrice(customer.grandTotal)}</span>
-                                                    </div>
+                                                <div className="flex items-center gap-2 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                                                    <span className="text-sm font-semibold text-primary">{formatPrice(customer.grandTotal)}</span>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={allInvoiced
+                                                            ? "h-7 gap-1 text-xs text-green-700 border-green-400 bg-green-50 hover:bg-green-100"
+                                                            : "h-7 gap-1 text-xs text-muted-foreground border-muted-foreground/30 hover:bg-muted"}
+                                                        onClick={() => handleToggleInvoiced(customer, allInvoiced)}
+                                                        disabled={isMarkingInvoiced === id}
+                                                    >
+                                                        {isMarkingInvoiced === id
+                                                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                            : <CheckCircle2 className="h-3 w-3" />}
+                                                        Gefactureerd
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        onClick={() => handleDeleteInvoice(customer)}
+                                                        disabled={isDeleting === id}
+                                                    >
+                                                        {isDeleting === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                    </Button>
                                                 </div>
-                                            </CardContent>
+                                            </div>
+
+                                            {/* Expandable details */}
+                                            {isExpanded && (
+                                                <CardContent className="pt-4">
+                                                    <div className="space-y-6">
+                                                        {customer.orders.map(order => {
+                                                            let orderTotal = 0
+                                                            return (
+                                                                <div key={order.id} className="space-y-2 border-b last:border-0 pb-4 last:pb-0">
+                                                                    <div className="flex justify-between items-center bg-muted/20 p-2 rounded">
+                                                                        <span className="text-xs font-bold text-muted-foreground uppercase">Order #{order.order_number}</span>
+                                                                        <div className="flex items-center gap-2">
+                                                                            {order.is_invoiced && (
+                                                                                <span className="text-[10px] text-green-600 font-medium flex items-center gap-0.5">
+                                                                                    <Check className="h-3 w-3" /> gefactureerd
+                                                                                </span>
+                                                                            )}
+                                                                            <span className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString('nl-NL')}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-1.5 pl-2">
+                                                                        {order.order_items?.map(item => {
+                                                                            const isPieceBased = ['st', 'stuk', 'blok'].includes(item.products?.unit_label?.toLowerCase() || '')
+                                                                            const isPricePerKilo = item.products?.is_price_per_kilo
+                                                                            const stdWeight = item.products?.weight_per_unit || 0
+                                                                            let linePrice = 0
+                                                                            let displayQty = ""
+                                                                            if (isPieceBased) {
+                                                                                const weight = item.actual_weight !== null ? item.actual_weight : (item.quantity * stdWeight)
+                                                                                linePrice = isPricePerKilo ? weight * item.price_snapshot : item.quantity * item.price_snapshot
+                                                                                displayQty = `${item.quantity} ${item.products?.unit_label}`
+                                                                                if (item.actual_weight !== null || (isPricePerKilo && stdWeight > 0)) {
+                                                                                    displayQty += ` (${weight.toFixed(2)} kg)`
+                                                                                }
+                                                                            } else {
+                                                                                linePrice = item.quantity * item.price_snapshot
+                                                                                displayQty = `${item.quantity.toFixed(2)} ${item.products?.unit_label}`
+                                                                            }
+                                                                            orderTotal += linePrice
+                                                                            return (
+                                                                                <div key={item.id} className="flex justify-between text-xs items-baseline">
+                                                                                    <span className="flex-1 mr-4">
+                                                                                        <span className="font-medium">{displayQty}</span> {item.products?.name}
+                                                                                        <span className="text-[10px] text-muted-foreground ml-1">@ {formatPrice(item.price_snapshot)}</span>
+                                                                                    </span>
+                                                                                    <span className="text-muted-foreground font-mono">{formatPrice(linePrice)}</span>
+                                                                                </div>
+                                                                            )
+                                                                        })}
+                                                                        <div className="flex justify-end pt-1">
+                                                                            <span className="text-[10px] font-bold">Subtotaal: {formatPrice(orderTotal)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                        <div className="border-t pt-3 mt-2 flex justify-between font-bold text-base">
+                                                            <span>Maand Totaal</span>
+                                                            <span className="text-primary">{formatPrice(customer.grandTotal)}</span>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            )}
                                         </Card>
                                     )
                                 })}
