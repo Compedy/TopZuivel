@@ -63,6 +63,7 @@ export interface Database {
                     status: string
                     notes: string | null
                     order_number: number
+                    is_invoiced: boolean
                 }
                 Insert: {
                     id?: string
@@ -73,6 +74,7 @@ export interface Database {
                     status?: string
                     notes?: string | null
                     order_number?: number
+                    is_invoiced?: boolean
                 }
                 Update: {
                     id?: string
@@ -83,6 +85,7 @@ export interface Database {
                     status?: string
                     notes?: string | null
                     order_number?: number
+                    is_invoiced?: boolean
                 }
                 Relationships: []
             }
