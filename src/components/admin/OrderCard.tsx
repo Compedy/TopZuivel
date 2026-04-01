@@ -28,11 +28,9 @@ interface OrderCardProps {
     formatDate: (date: string) => string
     formatPrice: (price: number) => string
     editingItems: Record<string, EditData>
-    optimisticCompletion: Record<string, boolean>
     saving: string | null
     completing: string | null
     handlers: {
-        handleToggleCompletion: (itemId: string, currentStatus: boolean) => void
         handleWeightChange: (itemId: string, val: string) => void
         handleSaveWeight: (item: OrderItemWithProduct, standardWeight: number) => void
         handleResetWeight: (itemId: string, unitLabel?: string) => void
@@ -51,7 +49,6 @@ export default function OrderCard({
     formatDate,
     formatPrice,
     editingItems,
-    optimisticCompletion,
     saving,
     completing,
     handlers
@@ -150,7 +147,6 @@ export default function OrderCard({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground border-b text-[11px] uppercase tracking-wider">
                                 <tr>
-                                    <th className="py-3 px-4 text-left font-semibold w-10">Vink</th>
                                     <th className="py-3 px-4 text-left font-semibold">Product</th>
                                     <th className="py-3 px-4 text-center font-semibold">Bestelling</th>
                                     <th className="py-3 px-4 text-right font-semibold">Aanpassen</th>
@@ -166,7 +162,6 @@ export default function OrderCard({
                                         item.products?.is_price_per_kilo ||
                                         (item.products?.weight_per_unit && item.products.weight_per_unit > 0)
                                     ))
-                                    const isItemCompleted = !!(optimisticCompletion[item.id] ?? item.is_completed)
                                     const editData = editingItems[item.id]
                                     const standardWeight = item.products?.weight_per_unit || 1
                                     const initialWeight = item.actual_weight ?? (item.quantity * standardWeight)
@@ -178,12 +173,10 @@ export default function OrderCard({
                                             key={item.id}
                                             item={item}
                                             isCompleted={isCompleted}
-                                            isItemCompleted={isItemCompleted}
                                             isWeightAdjustable={isWeightAdjustable}
                                             editData={editData}
                                             saving={saving === item.id}
                                             hasChanged={hasChanged}
-                                            onToggleCompletion={() => handlers.handleToggleCompletion(item.id, isItemCompleted)}
                                             onWeightChange={(val) => handlers.handleWeightChange(item.id, val)}
                                             onSaveWeight={() => handlers.handleSaveWeight(item, standardWeight)}
                                             onResetWeight={() => handlers.handleResetWeight(item.id, item.products?.unit_label)}

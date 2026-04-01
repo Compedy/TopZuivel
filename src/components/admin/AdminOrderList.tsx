@@ -8,14 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { OrderWithItems, Product } from '@/types'
-import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, CheckCircle2, FileText, Search, Pencil } from 'lucide-react'
+import { ChevronDown, ChevronUp, Scale, Save, Loader2, ListTree, RotateCcw, FileText, Search, Pencil } from 'lucide-react'
 import {
     updateOrderItemQuantity,
     updateOrderStatus,
     updateOrderMetadata,
     addOrderItem,
     removeOrderItem,
-    toggleOrderItemCompletion,
     deleteOrder
 } from '@/app/admin/actions'
 import { generateOrderPDF, getDisplayQuantity } from '@/lib/pdf-utils'
@@ -46,7 +45,6 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
     const [completing, setCompleting] = useState<string | null>(null)
     const [showCompleted, setShowCompleted] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const [optimisticCompletion, setOptimisticCompletion] = useState<Record<string, boolean>>({})
     const [isDeleting, setIsDeleting] = useState(false)
 
     const filteredOrders = useMemo(() => {
@@ -86,29 +84,6 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
 
     const toggleOrder = (orderId: string) => {
         setExpandedOrder(expandedOrder === orderId ? null : orderId)
-    }
-
-    const handleToggleCompletion = async (itemId: string, currentStatus: boolean) => {
-        const newStatus = !currentStatus
-
-        // Optimistic update
-        setOptimisticCompletion(prev => ({ ...prev, [itemId]: newStatus }))
-
-        const result = await toggleOrderItemCompletion(itemId, newStatus)
-        if (!result.success) {
-            // Revert on failure
-            setOptimisticCompletion(prev => {
-                const newState = { ...prev }
-                delete newState[itemId]
-                return newState
-            })
-            toast.error('Fout bij bijwerken status: ' + result.error)
-        } else {
-            router.refresh()
-            // We keep the optimistic status until the refresh is complete
-            // (initialOrders update will naturally override it if we manage it correctly, 
-            // but for now, the render logic will prioritize local state)
-        }
     }
 
     const initEditing = (item: OrderWithItems['order_items'][number]) => {
@@ -381,11 +356,9 @@ export default function AdminOrderList({ initialOrders, products }: AdminOrderLi
                         formatDate={formatDate}
                         formatPrice={formatPrice}
                         editingItems={editingItems}
-                        optimisticCompletion={optimisticCompletion}
                         saving={saving}
                         completing={completing}
                         handlers={{
-                            handleToggleCompletion,
                             handleWeightChange,
                             handleSaveWeight: (item, std) => saveWeight(item.id, std, item.products?.unit_label),
                             handleResetWeight: resetWeight,
