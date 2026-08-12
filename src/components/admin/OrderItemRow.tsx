@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Scale, Save, Loader2, RotateCcw, CheckCircle2 } from 'lucide-react'
+import { Scale, Save, Loader2, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { OrderWithItems } from '@/types'
 
@@ -20,12 +20,10 @@ interface EditData {
 interface OrderItemRowProps {
     item: OrderItemWithProduct
     isCompleted: boolean
-    isItemCompleted: boolean
     isWeightAdjustable: boolean
     editData: EditData | undefined
     saving: boolean
     hasChanged: boolean
-    onToggleCompletion: () => void
     onWeightChange: (val: string) => void
     onSaveWeight: () => void
     onResetWeight: () => void
@@ -37,12 +35,10 @@ interface OrderItemRowProps {
 export default function OrderItemRow({
     item,
     isCompleted,
-    isItemCompleted,
     isWeightAdjustable,
     editData,
     saving,
     hasChanged,
-    onToggleCompletion,
     onWeightChange,
     onSaveWeight,
     onResetWeight,
@@ -64,28 +60,8 @@ export default function OrderItemRow({
             : (displayQty * item.price_snapshot)
 
     return (
-        <tr className={cn(
-            "transition-all duration-300",
-            isItemCompleted ? "bg-green-100/40 hover:bg-green-100/60" : "hover:bg-muted/10"
-        )}>
-            <td className="py-4 px-4 text-center">
-                {!isCompleted && (
-                    <button
-                        onClick={onToggleCompletion}
-                        className={cn(
-                            "transition-colors",
-                            isItemCompleted ? "text-green-600" : "text-muted-foreground hover:text-primary"
-                        )}
-                        title={isItemCompleted ? "Markeer als niet gereed" : "Markeer als gereed"}
-                    >
-                        <CheckCircle2 className={cn("h-5 w-5", isItemCompleted && "fill-green-600/10")} />
-                    </button>
-                )}
-            </td>
-            <td className={cn(
-                "py-4 px-4 font-medium transition-all",
-                isItemCompleted && "text-green-900/60 line-through decoration-green-600/50 decoration-2"
-            )}>
+        <tr className="transition-all duration-300 hover:bg-muted/10">
+            <td className="py-4 px-4 font-medium">
                 {item.products?.name}
                 {isCheese && (
                     <Badge variant="outline" className="ml-2 text-[10px] text-blue-600 border-blue-200 bg-blue-50">Kaas</Badge>
@@ -147,7 +123,7 @@ export default function OrderItemRow({
                         </div>
                     ) : (
                         <div className="flex flex-col items-end">
-                            <span className="text-muted-foreground text-xs italic">{isCompleted || isItemCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
+                            <span className="text-muted-foreground text-xs italic">{isCompleted ? 'Vastgezet' : 'Niet aanpasbaar'}</span>
                             <div className="text-xs font-bold text-muted-foreground">
                                 Subtotaal: {formatPrice(rowTotalPrice)}
                             </div>
