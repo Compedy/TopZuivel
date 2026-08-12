@@ -36,5 +36,11 @@ AS $$
         user_agent = EXCLUDED.user_agent;
 $$;
 
+-- Supabase grants EXECUTE on new functions to anon/authenticated via
+-- ALTER DEFAULT PRIVILEGES regardless of the PUBLIC revoke above, so
+-- those roles must be revoked explicitly too. Without this, anyone
+-- hitting the public API could call this SECURITY DEFINER function
+-- directly and block arbitrary IPs, bypassing the honeypot entirely.
 REVOKE ALL ON FUNCTION flag_ip_hit(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION flag_ip_hit(TEXT, TEXT, TEXT, TEXT) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION flag_ip_hit(TEXT, TEXT, TEXT, TEXT) TO service_role;
