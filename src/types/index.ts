@@ -221,6 +221,36 @@ export interface Database {
                 }
                 Relationships: []
             }
+            blocked_ips: {
+                Row: {
+                    ip: string
+                    reason: string
+                    route: string | null
+                    user_agent: string | null
+                    hit_count: number
+                    first_seen: string
+                    last_seen: string
+                }
+                Insert: {
+                    ip: string
+                    reason: string
+                    route?: string | null
+                    user_agent?: string | null
+                    hit_count?: number
+                    first_seen?: string
+                    last_seen?: string
+                }
+                Update: {
+                    ip?: string
+                    reason?: string
+                    route?: string | null
+                    user_agent?: string | null
+                    hit_count?: number
+                    first_seen?: string
+                    last_seen?: string
+                }
+                Relationships: []
+            }
         }
         Views: {
             [_ in never]: never
